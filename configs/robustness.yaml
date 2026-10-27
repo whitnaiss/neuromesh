@@ -1,0 +1,20 @@
+# Owner: Mihir (Track A)
+name: robustness
+topologies: [er, ws, ba, modular, yeo_sbm]
+scales: [112]
+tasks: [aggregation]
+seeds: [0, 1, 2, 3, 4]
+rounds: 10
+mean_degree: 4
+history_rounds: 3
+removals:
+  - {mode: random, fraction: 0.1}
+  - {mode: random, fraction: 0.2}
+  - {mode: random, fraction: 0.3}
+  - {mode: targeted, fraction: 0.1}
+  - {mode: targeted, fraction: 0.2}
+  - {mode: targeted, fraction: 0.3}
+llm:
+  backend: openai_compatible
+  model: TBD-after-pilot
+  base_url: http://localhost:8000/v1

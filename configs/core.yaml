@@ -1,0 +1,12 @@
+name: core
+topologies: [er, ws, ba, modular, yeo_sbm]
+scales: [7, 14, 28, 56]
+tasks: [fact_propagation, consensus, aggregation]
+seeds: [0, 1, 2]
+rounds: 10
+mean_degree: 4
+history_rounds: 3
+llm:
+  backend: openai_compatible
+  model: TBD-after-pilot
+  base_url: http://localhost:8000/v1

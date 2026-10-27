@@ -1,0 +1,10 @@
+name: pilot
+topologies: [er, ws, ba, modular, yeo_sbm]
+scales: [7, 14, 28]
+tasks: [fact_propagation, consensus, aggregation]
+seeds: [0]
+rounds: 10
+mean_degree: 4
+history_rounds: 3
+llm:
+  backend: mock

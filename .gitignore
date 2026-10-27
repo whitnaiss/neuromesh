@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+.DS_Store
+# experiment outputs and model caches (never commit)
+results/
+*.parquet
+!tests/fixtures/logs/*.parquet
+*.jsonl
+!tests/fixtures/**/*.jsonl
+hf_cache/

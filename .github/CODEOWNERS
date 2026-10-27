@@ -1,0 +1,45 @@
+# Later lines take precedence. A PR that touches a path requests review from its owner.
+# Default and shared files: Andrew (Track D)
+*                                   @andrew2719
+
+# Track A: Mihir — graphs, data, robustness config, integration test
+/src/neuromesh/graphs/              @mihir1mathur
+/data/                              @mihir1mathur
+/tests/graphs/                      @mihir1mathur
+/tests/fixtures/graphs/             @mihir1mathur
+/tests/integration/                 @mihir1mathur
+
+# Track B: Armman — LLM clients and agent engine
+/src/neuromesh/llm/                 @armmanj
+/src/neuromesh/agents/              @armmanj
+/tests/llm/                         @armmanj
+/tests/agents/                      @armmanj
+/tests/fixtures/llm/                @armmanj
+/docs/track_b.md                    @armmanj
+
+# Track C: Yutong — tasks, evaluation, baseline
+/src/neuromesh/tasks/               @whitnaiss
+/src/neuromesh/evaluation/          @whitnaiss
+/src/neuromesh/baseline/            @whitnaiss
+/tests/tasks/                       @whitnaiss
+/tests/evaluation/                  @whitnaiss
+/tests/baseline/                    @whitnaiss
+/tests/fixtures/transcripts/        @whitnaiss
+/docs/track_c.md                    @whitnaiss
+
+# Track D: Andrew — runner, configs, scripts, CI, shared files
+/src/neuromesh/runner/              @andrew2719
+/configs/                           @andrew2719
+/scripts/                           @andrew2719
+/tests/runner/                      @andrew2719
+/tests/fixtures/logs/               @andrew2719
+/docs/track_d.md                    @andrew2719
+
+# Exceptions owned by another track
+/configs/robustness.yaml            @mihir1mathur
+/docs/track_a.md                    @mihir1mathur
+/tests/fixtures/llm/contract_examples.json  @andrew2719 @armmanj
+/docs/llm_endpoint.md               @andrew2719 @armmanj
+
+# Shared interfaces: everyone is requested (team rule: all four approve after the Nov 1 freeze)
+/src/neuromesh/contracts.py         @andrew2719 @mihir1mathur @armmanj @whitnaiss

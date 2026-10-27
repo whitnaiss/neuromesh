@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuromesh"
+version = "0.1.0"
+description = "Brain-inspired LLM multi-agent networks: effects of scale and topology on collective information processing"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Mihir Mathur" },
+  { name = "Yutong Dai" },
+  { name = "Armman Jhamb" },
+  { name = "Andrew Blaze Pitta" },
+]
+dependencies = [
+  "networkx>=3.2",
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "pyarrow>=14",
+  "pydantic>=2.5",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.5"]
+
+[project.scripts]
+neuromesh = "neuromesh.runner.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --import-mode=importlib"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
