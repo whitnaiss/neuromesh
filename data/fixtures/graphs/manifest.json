@@ -1,0 +1,254 @@
+{
+  "count": 15,
+  "fixtures": [
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "er_n007_seed0.json",
+      "mean_degree": 4.0,
+      "n": 7,
+      "n_edges": 14,
+      "params": {
+        "ensure_connected": true,
+        "m": 14,
+        "model": "gnm"
+      },
+      "seed": 0,
+      "topology": "er"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "er_n014_seed0.json",
+      "mean_degree": 4.0,
+      "n": 14,
+      "n_edges": 28,
+      "params": {
+        "ensure_connected": true,
+        "m": 28,
+        "model": "gnm"
+      },
+      "seed": 0,
+      "topology": "er"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "er_n028_seed0.json",
+      "mean_degree": 4.0,
+      "n": 28,
+      "n_edges": 56,
+      "params": {
+        "ensure_connected": true,
+        "m": 56,
+        "model": "gnm"
+      },
+      "seed": 0,
+      "topology": "er"
+    },
+    {
+      "attempts": 5,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "er_n056_seed0.json",
+      "mean_degree": 4.0,
+      "n": 56,
+      "n_edges": 112,
+      "params": {
+        "ensure_connected": true,
+        "m": 112,
+        "model": "gnm"
+      },
+      "seed": 0,
+      "topology": "er"
+    },
+    {
+      "attempts": 15,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "er_n112_seed0.json",
+      "mean_degree": 4.0,
+      "n": 112,
+      "n_edges": 224,
+      "params": {
+        "ensure_connected": true,
+        "m": 224,
+        "model": "gnm"
+      },
+      "seed": 0,
+      "topology": "er"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ws_n007_seed0.json",
+      "mean_degree": 4.0,
+      "n": 7,
+      "n_edges": 14,
+      "params": {
+        "ensure_connected": true,
+        "k": 4,
+        "rewiring_prob": 0.1
+      },
+      "seed": 0,
+      "topology": "ws"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ws_n014_seed0.json",
+      "mean_degree": 4.0,
+      "n": 14,
+      "n_edges": 28,
+      "params": {
+        "ensure_connected": true,
+        "k": 4,
+        "rewiring_prob": 0.1
+      },
+      "seed": 0,
+      "topology": "ws"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ws_n028_seed0.json",
+      "mean_degree": 4.0,
+      "n": 28,
+      "n_edges": 56,
+      "params": {
+        "ensure_connected": true,
+        "k": 4,
+        "rewiring_prob": 0.1
+      },
+      "seed": 0,
+      "topology": "ws"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ws_n056_seed0.json",
+      "mean_degree": 4.0,
+      "n": 56,
+      "n_edges": 112,
+      "params": {
+        "ensure_connected": true,
+        "k": 4,
+        "rewiring_prob": 0.1
+      },
+      "seed": 0,
+      "topology": "ws"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ws_n112_seed0.json",
+      "mean_degree": 4.0,
+      "n": 112,
+      "n_edges": 224,
+      "params": {
+        "ensure_connected": true,
+        "k": 4,
+        "rewiring_prob": 0.1
+      },
+      "seed": 0,
+      "topology": "ws"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ba_n007_seed0.json",
+      "mean_degree": 4.0,
+      "n": 7,
+      "n_edges": 14,
+      "params": {
+        "core_size": 5,
+        "initial_graph": "complete_graph(5)",
+        "m": 2,
+        "variant": "degree_matched"
+      },
+      "seed": 0,
+      "topology": "ba"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ba_n014_seed0.json",
+      "mean_degree": 4.0,
+      "n": 14,
+      "n_edges": 28,
+      "params": {
+        "core_size": 5,
+        "initial_graph": "complete_graph(5)",
+        "m": 2,
+        "variant": "degree_matched"
+      },
+      "seed": 0,
+      "topology": "ba"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ba_n028_seed0.json",
+      "mean_degree": 4.0,
+      "n": 28,
+      "n_edges": 56,
+      "params": {
+        "core_size": 5,
+        "initial_graph": "complete_graph(5)",
+        "m": 2,
+        "variant": "degree_matched"
+      },
+      "seed": 0,
+      "topology": "ba"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ba_n056_seed0.json",
+      "mean_degree": 4.0,
+      "n": 56,
+      "n_edges": 112,
+      "params": {
+        "core_size": 5,
+        "initial_graph": "complete_graph(5)",
+        "m": 2,
+        "variant": "degree_matched"
+      },
+      "seed": 0,
+      "topology": "ba"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "ba_n112_seed0.json",
+      "mean_degree": 4.0,
+      "n": 112,
+      "n_edges": 224,
+      "params": {
+        "core_size": 5,
+        "initial_graph": "complete_graph(5)",
+        "m": 2,
+        "variant": "degree_matched"
+      },
+      "seed": 0,
+      "topology": "ba"
+    }
+  ],
+  "generated_utc": "2026-10-25T03:53:28+00:00",
+  "generator_version": "trackA-week1-1.0.0",
+  "networkx_version": "3.6.1",
+  "schema_version": 1
+}
