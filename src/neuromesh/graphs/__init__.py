@@ -9,8 +9,12 @@ Status
 ``ba``, ``modular`` and ``yeo_sbm``. ``assign_roles`` is implemented and
 assigns the seven Yeo functional roles in balance. ``remove_nodes`` is
 implemented as of Week 3 -- random failure and adaptive highest-degree attack,
-in ``robustness.py``. ``structural_metrics`` remains a placeholder owned by
-Week 4.
+in ``robustness.py``. ``structural_metrics`` is implemented as of Week 4, in
+``metrics.py``, alongside node-level positional covariates
+(``positional_covariates``), graph-only robustness curves (``curves.py``), the
+Week 4 analysis datasets (``datasets.py``) and dependency-free SVG figures
+(``figures.py``). No Track A entry point in ``contracts.py`` is a placeholder
+any more.
 
 ``yeo_sbm`` is defined by empirical data: it needs the derived 7x7 inter-network
 structural matrix (``data/yeo/yeo7x7_sc.json``) and raises
@@ -85,6 +89,27 @@ from .blocks import (
     sample_block_graph,
     validate_block_weights,
 )
+from .curves import (
+    AUC_FIELDS,
+    CHECKPOINT_FRACTIONS,
+    MAX_REMOVAL_FRACTION,
+    ROBUSTNESS_FIELDS,
+    checkpoint_rows,
+    robustness_auc,
+    robustness_trajectory,
+    trajectory_rows,
+)
+from .datasets import (
+    AGGREGATE_METRICS,
+    CONDITION_FIELDS,
+    DEFAULT_OUTPUT_DIR,
+    aggregate_conditions,
+    build_positional_table,
+    build_robustness_tables,
+    build_structural_table,
+    expected_node_row_count,
+    run_week4_analysis,
+)
 from .fixtures import (
     DEFAULT_FIXTURE_DIR,
     SCHEMA_VERSION,
@@ -109,6 +134,22 @@ from .generators import (
 )
 from .generators import (
     generate_graph as generate_from_spec,
+)
+from .metrics import (
+    POSITIONAL_FIELDS,
+    STRUCTURAL_FIELDS,
+    degree_assortativity,
+    degree_heterogeneity,
+    degree_statistics,
+    graph_id,
+    input_readout_distance,
+    partition_modularity,
+    positional_covariates,
+    role_balance,
+    role_partition,
+)
+from .metrics import (
+    structural_metrics as _structural_metrics,
 )
 from .robustness import (
     DEFAULT_ROUNDING_RULE,
@@ -325,8 +366,60 @@ def remove_nodes(graph: nx.Graph, spec: RemovalSpec, seed: int) -> nx.Graph:
 
 
 def structural_metrics(graph: nx.Graph) -> dict:
-    """Path length, clustering, modularity, max degree, input-readout distance, hub roles."""
-    raise NotImplementedError("Track A: structural_metrics")
+    """Path length, clustering, modularity, max degree, input-readout distance, hub roles.
+
+    The shared ``contracts.py`` entry point, implemented in Week 4. Like
+    :func:`generate_graph` and :func:`remove_nodes` it is a thin adapter: the
+    measurement lives in ``metrics.py``.
+
+    Everything the contract names is present, under these keys:
+
+    ======================== ==================================================
+    Contract wording         Key(s)
+    ======================== ==================================================
+    path length              ``average_shortest_path_length``, ``diameter``,
+                             ``radius`` (plus ``*_largest_component``)
+    clustering               ``average_clustering``, ``transitivity``
+    modularity               ``modularity_role_partition`` -- the PREDEFINED
+                             seven-network partition at resolution 1.0, not
+                             community detection
+    max degree               ``degree_max`` (with min/mean/variance/std and
+                             ``degree_heterogeneity``)
+    input-readout distance   ``input_readout_mean_distance``, ``_min_``,
+                             ``_max_``, plus the unreachable-pair count
+    hub roles                ``hub_role``, ``hub_degree``
+    ======================== ==================================================
+
+    It also returns edge density, component structure, global efficiency,
+    degree assortativity and role-balance fields -- the full Week 4 structural
+    row. See :func:`neuromesh.graphs.metrics.structural_metrics` for every
+    definition and the undefined-value policy.
+
+    Parameters
+    ----------
+    graph:
+        Any undirected graph. ``topology``, ``n`` and ``seed`` are read from
+        ``graph.graph`` when present, so a graph from :func:`generate_graph`
+        identifies itself; they are ``None`` otherwise. Roles are needed for
+        the modularity, input-readout and hub-role fields, which are ``None``
+        on a graph that has none.
+
+    Returns
+    -------
+    dict
+        JSON-friendly scalars. **Undefined values are ``None``, never 0.0** --
+        a disconnected graph has no diameter and a regular graph has no
+        defined degree assortativity, and reporting 0.0 for either would be a
+        false measurement.
+
+    Notes
+    -----
+    Safe to call on an attacked graph: unlike :func:`validate_graph`, nothing
+    here requires connectivity or mean degree 4. The whole-graph path metrics
+    simply become ``None`` and the ``_largest_component`` fields carry the
+    readable values.
+    """
+    return _structural_metrics(graph)
 
 
 __all__ = [
@@ -390,6 +483,37 @@ __all__ = [
     "static_removal_order",
     "targeted_removal_order",
     "validate_attacked_graph",
+    # structural metrics and positional covariates (Week 4)
+    "POSITIONAL_FIELDS",
+    "STRUCTURAL_FIELDS",
+    "degree_assortativity",
+    "degree_heterogeneity",
+    "degree_statistics",
+    "graph_id",
+    "input_readout_distance",
+    "partition_modularity",
+    "positional_covariates",
+    "role_balance",
+    "role_partition",
+    # graph-only robustness curves (Week 4)
+    "AUC_FIELDS",
+    "CHECKPOINT_FRACTIONS",
+    "MAX_REMOVAL_FRACTION",
+    "ROBUSTNESS_FIELDS",
+    "checkpoint_rows",
+    "robustness_auc",
+    "robustness_trajectory",
+    "trajectory_rows",
+    # Week 4 analysis datasets
+    "AGGREGATE_METRICS",
+    "CONDITION_FIELDS",
+    "DEFAULT_OUTPUT_DIR",
+    "aggregate_conditions",
+    "build_positional_table",
+    "build_robustness_tables",
+    "build_structural_table",
+    "expected_node_row_count",
+    "run_week4_analysis",
     # shortest-path / round-budget analysis (Week 3)
     "DEFAULT_ROUND_BUDGETS",
     "STD_CONVENTION",

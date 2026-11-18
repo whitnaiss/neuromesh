@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1086.00" height="456.00" viewBox="0 0 1086.00 456.00">
+<rect width="1086.00" height="456.00" fill="#ffffff"/>
+<text x="24" y="28" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#111111">Figure 2 - Random failure vs targeted attack (N = 112, seed 0)</text>
+<text x="24" y="48" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#555555">Graph-only connectivity decay. Every integer removal count from 0 to floor(0.30N) is measured; segments join measured points only, with no interpolation or extrapolation. Denominator is the ORIGINAL N throughout. Targeted removal is adaptive highest-degree-first (degrees recomputed after each removal). This is structural connectivity, NOT agent communication success or task accuracy.</text>
+<rect x="78.00" y="92.00" width="380.00" height="300.00" fill="#ffffff" stroke="#333333" stroke-width="1"/>
+<line x1="78.00" y1="392.00" x2="458.00" y2="392.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="72.00" y="395.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0</text>
+<line x1="78.00" y1="317.00" x2="458.00" y2="317.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="72.00" y="320.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0.25</text>
+<line x1="78.00" y1="242.00" x2="458.00" y2="242.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="72.00" y="245.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0.5</text>
+<line x1="78.00" y1="167.00" x2="458.00" y2="167.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="72.00" y="170.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0.75</text>
+<line x1="78.00" y1="92.00" x2="458.00" y2="92.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="72.00" y="95.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">1</text>
+<line x1="78.00" y1="392.00" x2="78.00" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="78.00" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">0</text>
+<line x1="142.48" y1="392.00" x2="142.48" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="142.48" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.05</text>
+<line x1="206.97" y1="392.00" x2="206.97" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="206.97" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.10</text>
+<line x1="271.45" y1="392.00" x2="271.45" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="271.45" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.15</text>
+<line x1="335.94" y1="392.00" x2="335.94" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="335.94" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.20</text>
+<line x1="400.42" y1="392.00" x2="400.42" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="400.42" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.25</text>
+<line x1="464.91" y1="392.00" x2="464.91" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="464.91" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.30</text>
+<text x="268.00" y="84.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="#111111" text-anchor="middle">Random removal</text>
+<text x="268.00" y="424.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle">fraction of original nodes removed</text>
+<text x="38.00" y="242.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" transform="rotate(-90 38.00 242.00)">largest component / original N</text>
+<polyline points="78.00,92.00 89.52,94.68 101.03,97.36 112.55,100.04 124.06,102.71 135.58,105.39 147.09,108.07 158.61,110.75 170.12,113.43 181.64,116.11 193.15,118.79 204.67,121.46 216.18,124.14 227.70,126.82 239.21,129.50 250.73,132.18 262.24,134.86 273.76,137.54 285.27,142.89 296.79,148.25 308.30,150.93 319.82,153.61 331.33,156.29 342.85,164.32 354.36,167.00 365.88,167.00 377.39,169.68 388.91,172.36 400.42,175.04 411.94,177.71 423.45,180.39 434.97,183.07 446.48,185.75 458.00,188.43" fill="none" stroke="#1f4e9c" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline points="78.00,92.00 89.52,94.68 101.03,97.36 112.55,100.04 124.06,102.71 135.58,105.39 147.09,108.07 158.61,110.75 170.12,113.43 181.64,116.11 193.15,118.79 204.67,121.46 216.18,124.14 227.70,126.82 239.21,129.50 250.73,132.18 262.24,134.86 273.76,137.54 285.27,140.21 296.79,158.96 308.30,164.32 319.82,167.00 331.33,172.36 342.85,175.04 354.36,177.71 365.88,177.71 377.39,180.39 388.91,183.07 400.42,196.46 411.94,199.14 423.45,201.82 434.97,204.50 446.48,207.18 458.00,209.86" fill="none" stroke="#b8860b" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline points="78.00,92.00 89.52,94.68 101.03,97.36 112.55,100.04 124.06,102.71 135.58,105.39 147.09,108.07 158.61,110.75 170.12,113.43 181.64,116.11 193.15,118.79 204.67,121.46 216.18,124.14 227.70,126.82 239.21,129.50 250.73,132.18 262.24,134.86 273.76,137.54 285.27,140.21 296.79,142.89 308.30,145.57 319.82,148.25 331.33,150.93 342.85,153.61 354.36,156.29 365.88,158.96 377.39,161.64 388.91,164.32 400.42,167.00 411.94,169.68 423.45,172.36 434.97,175.04 446.48,180.39 458.00,183.07" fill="none" stroke="#1b7a3d" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline points="78.00,92.00 89.52,94.68 101.03,97.36 112.55,100.04 124.06,102.71 135.58,108.07 147.09,110.75 158.61,113.43 170.12,116.11 181.64,118.79 193.15,121.46 204.67,124.14 216.18,126.82 227.70,129.50 239.21,132.18 250.73,134.86 262.24,137.54 273.76,140.21 285.27,142.89 296.79,145.57 308.30,148.25 319.82,150.93 331.33,153.61 342.85,156.29 354.36,158.96 365.88,161.64 377.39,164.32 388.91,167.00 400.42,169.68 411.94,172.36 423.45,175.04 434.97,180.39 446.48,183.07 458.00,185.75" fill="none" stroke="#a33b8f" stroke-width="2.0" stroke-linejoin="round"/>
+<polyline points="78.00,92.00 89.52,97.36 101.03,100.04 112.55,102.71 124.06,105.39 135.58,110.75 147.09,113.43 158.61,116.11 170.12,118.79 181.64,124.14 193.15,126.82 204.67,129.50 216.18,132.18 227.70,134.86 239.21,137.54 250.73,140.21 262.24,142.89 273.76,145.57 285.27,148.25 296.79,148.25 308.30,150.93 319.82,153.61 331.33,156.29 342.85,158.96 354.36,161.64 365.88,164.32 377.39,167.00 388.91,169.68 400.42,177.71 411.94,180.39 423.45,183.07 434.97,185.75 446.48,188.43 458.00,191.11" fill="none" stroke="#c0392b" stroke-width="2.0" stroke-linejoin="round"/>
+<rect x="546.00" y="92.00" width="380.00" height="300.00" fill="#ffffff" stroke="#333333" stroke-width="1"/>
+<line x1="546.00" y1="392.00" x2="926.00" y2="392.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="540.00" y="395.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0</text>
+<line x1="546.00" y1="317.00" x2="926.00" y2="317.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="540.00" y="320.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0.25</text>
+<line x1="546.00" y1="242.00" x2="926.00" y2="242.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="540.00" y="245.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0.5</text>
+<line x1="546.00" y1="167.00" x2="926.00" y2="167.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="540.00" y="170.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">0.75</text>
+<line x1="546.00" y1="92.00" x2="926.00" y2="92.00" stroke="#e4e4e4" stroke-width="1"/>
+<text x="540.00" y="95.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="end">1</text>
+<line x1="546.00" y1="392.00" x2="546.00" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="546.00" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">0</text>
+<line x1="610.48" y1="392.00" x2="610.48" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="610.48" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.05</text>
+<line x1="674.97" y1="392.00" x2="674.97" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="674.97" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.10</text>
+<line x1="739.45" y1="392.00" x2="739.45" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="739.45" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.15</text>
+<line x1="803.94" y1="392.00" x2="803.94" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="803.94" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.20</text>
+<line x1="868.42" y1="392.00" x2="868.42" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="868.42" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.25</text>
+<line x1="932.91" y1="392.00" x2="932.91" y2="396.00" stroke="#333333" stroke-width="1"/>
+<text x="932.91" y="408.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333" text-anchor="middle">.30</text>
+<text x="736.00" y="84.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="#111111" text-anchor="middle">Targeted removal</text>
+<text x="736.00" y="424.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle">fraction of original nodes removed</text>
+<text x="506.00" y="242.00" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" transform="rotate(-90 506.00 242.00)">largest component / original N</text>
+<polyline points="546.00,92.00 557.52,94.68 569.03,97.36 580.55,100.04 592.06,102.71 603.58,105.39 615.09,108.07 626.61,113.43 638.12,116.11 649.64,118.79 661.15,121.46 672.67,126.82 684.18,129.50 695.70,134.86 707.21,140.21 718.73,142.89 730.24,148.25 741.76,153.61 753.27,169.68 764.79,177.71 776.30,183.07 787.82,185.75 799.33,215.21 810.85,225.93 822.36,247.36 833.88,250.04 845.39,287.54 856.91,335.75 868.42,335.75 879.94,335.75 891.45,359.86 902.97,359.86 914.48,373.25 926.00,373.25" fill="none" stroke="#1f4e9c" stroke-width="2.0" stroke-dasharray="6 3" stroke-linejoin="round"/>
+<polyline points="546.00,92.00 557.52,94.68 569.03,97.36 580.55,100.04 592.06,102.71 603.58,105.39 615.09,108.07 626.61,110.75 638.12,113.43 649.64,116.11 661.15,118.79 672.67,121.46 684.18,124.14 695.70,126.82 707.21,137.54 718.73,140.21 730.24,142.89 741.76,145.57 753.27,167.00 764.79,169.68 776.30,172.36 787.82,175.04 799.33,177.71 810.85,180.39 822.36,183.07 833.88,185.75 845.39,188.43 856.91,231.29 868.42,233.96 879.94,236.64 891.45,244.68 902.97,250.04 914.48,284.86 926.00,284.86" fill="none" stroke="#b8860b" stroke-width="2.0" stroke-dasharray="6 3" stroke-linejoin="round"/>
+<polyline points="546.00,92.00 557.52,94.68 569.03,97.36 580.55,105.39 592.06,108.07 603.58,121.46 615.09,124.14 626.61,132.18 638.12,140.21 649.64,161.64 661.15,260.75 672.67,287.54 684.18,303.61 695.70,303.61 707.21,303.61 718.73,333.07 730.24,346.46 741.76,346.46 753.27,367.89 764.79,373.25 776.30,373.25 787.82,373.25 799.33,373.25 810.85,373.25 822.36,373.25 833.88,373.25 845.39,373.25 856.91,373.25 868.42,373.25 879.94,373.25 891.45,381.29 902.97,381.29 914.48,381.29 926.00,386.64" fill="none" stroke="#1b7a3d" stroke-width="2.0" stroke-dasharray="6 3" stroke-linejoin="round"/>
+<polyline points="546.00,92.00 557.52,94.68 569.03,97.36 580.55,100.04 592.06,102.71 603.58,108.07 615.09,110.75 626.61,113.43 638.12,116.11 649.64,118.79 661.15,129.50 672.67,132.18 684.18,134.86 695.70,137.54 707.21,140.21 718.73,142.89 730.24,145.57 741.76,150.93 753.27,156.29 764.79,167.00 776.30,169.68 787.82,172.36 799.33,175.04 810.85,191.11 822.36,193.79 833.88,215.21 845.39,242.00 856.91,295.57 868.42,341.11 879.94,343.79 891.45,343.79 902.97,343.79 914.48,365.21 926.00,365.21" fill="none" stroke="#a33b8f" stroke-width="2.0" stroke-dasharray="6 3" stroke-linejoin="round"/>
+<polyline points="546.00,92.00 557.52,94.68 569.03,97.36 580.55,100.04 592.06,102.71 603.58,108.07 615.09,113.43 626.61,116.11 638.12,118.79 649.64,126.82 661.15,134.86 672.67,140.21 684.18,145.57 695.70,148.25 707.21,153.61 718.73,156.29 730.24,161.64 741.76,164.32 753.27,167.00 764.79,172.36 776.30,175.04 787.82,185.75 799.33,209.86 810.85,215.21 822.36,220.57 833.88,223.25 845.39,228.61 856.91,274.14 868.42,274.14 879.94,292.89 891.45,303.61 902.97,327.71 914.48,335.75 926.00,351.82" fill="none" stroke="#c0392b" stroke-width="2.0" stroke-dasharray="6 3" stroke-linejoin="round"/>
+<line x1="940.00" y1="104.00" x2="962.00" y2="104.00" stroke="#1f4e9c" stroke-width="2.2"/>
+<circle cx="951.00" cy="104.00" r="2.4" fill="#1f4e9c"/>
+<text x="969.00" y="107.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333">er</text>
+<line x1="940.00" y1="120.00" x2="962.00" y2="120.00" stroke="#b8860b" stroke-width="2.2"/>
+<circle cx="951.00" cy="120.00" r="2.4" fill="#b8860b"/>
+<text x="969.00" y="123.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333">ws</text>
+<line x1="940.00" y1="136.00" x2="962.00" y2="136.00" stroke="#1b7a3d" stroke-width="2.2"/>
+<circle cx="951.00" cy="136.00" r="2.4" fill="#1b7a3d"/>
+<text x="969.00" y="139.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333">ba</text>
+<line x1="940.00" y1="152.00" x2="962.00" y2="152.00" stroke="#a33b8f" stroke-width="2.2"/>
+<circle cx="951.00" cy="152.00" r="2.4" fill="#a33b8f"/>
+<text x="969.00" y="155.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333">modular</text>
+<line x1="940.00" y1="168.00" x2="962.00" y2="168.00" stroke="#c0392b" stroke-width="2.2"/>
+<circle cx="951.00" cy="168.00" r="2.4" fill="#c0392b"/>
+<text x="969.00" y="171.50" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="10" fill="#333333">yeo_sbm</text>
+</svg>

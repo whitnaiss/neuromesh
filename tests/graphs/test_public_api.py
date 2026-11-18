@@ -312,19 +312,55 @@ def test_non_default_mean_degree_is_honoured():
 
 
 # --------------------------------------------------------------------------
-# later-week entry points keep their placeholder behaviour
+# every Track A entry point in contracts.py is now implemented
 # --------------------------------------------------------------------------
 
-def test_later_week_entry_points_are_still_placeholders():
-    """``structural_metrics`` is Week 4 work and must not pretend to work.
+def test_no_track_a_entry_point_is_a_placeholder_any_more():
+    """All four of Mihir's ``contracts.py`` entry points really work.
 
-    ``assign_roles`` and ``remove_nodes`` are no longer here: both are
-    implemented, and are covered by ``tests/graphs/test_roles.py`` and
-    ``tests/graphs/test_robustness.py`` respectively.
+    ``generate_graph`` (Week 1-2), ``assign_roles`` (Week 2),
+    ``remove_nodes`` (Week 3) and ``structural_metrics`` (Week 4). This test
+    replaces the placeholder assertions each of them used to carry, so a
+    regression that reinstated a ``NotImplementedError`` would fail here.
     """
-    graph = generate_graph("er", 14)
-    with pytest.raises(NotImplementedError, match="structural_metrics"):
-        structural_metrics(graph)
+    graph = assign_roles(generate_graph("er", 14), seed=0)
+    for entry_point, args in (
+        (structural_metrics, (graph,)),
+        (assign_roles, (graph, 0)),
+    ):
+        result = entry_point(*args)
+        assert result is not None
+
+
+def test_structural_metrics_is_implemented_through_the_shared_interface():
+    """The Week 1-3 placeholder is gone; the entry point must really work.
+
+    Deliberately minimal -- this module tests the *adapter*, so it checks the
+    shape and the fields ``contracts.py`` names. The definitions, ranges and
+    undefined-value policy are ``tests/graphs/test_metrics.py``.
+    """
+    graph = assign_roles(generate_graph("er", 14, seed=0), seed=0)
+    metrics = structural_metrics(graph)
+
+    assert isinstance(metrics, dict)
+    # every quantity the contract docstring names must be present
+    for field in (
+        "average_shortest_path_length",   # path length
+        "average_clustering",             # clustering
+        "modularity_role_partition",      # modularity
+        "degree_max",                     # max degree
+        "input_readout_mean_distance",    # input-readout distance
+        "hub_role",                       # hub roles
+    ):
+        assert field in metrics, field
+        assert metrics[field] is not None, field
+    # it identifies the graph from G.graph, as the one-argument call requires
+    assert metrics["topology"] == "er"
+    assert metrics["n"] == 14
+    assert metrics["seed"] == 0
+    # and every value is a JSON-friendly scalar for Track D's Parquet writer
+    for key, value in metrics.items():
+        assert value is None or isinstance(value, (str, int, float, bool)), key
 
 
 def test_assign_roles_is_implemented_and_balanced():
