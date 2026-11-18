@@ -247,3 +247,120 @@ Option 3 is strongly preferred over inventing numbers.
    *(Author list not yet read from the preprint — retrieve the full citation
    together with unresolved item U1 before using it in the report.)*
 4. FreeSurfer wiki, `CorticalParcellation_Yeo2011` · NeuroVault collection 1057
+
+---
+
+# Week 2 update — the matrix was derived
+
+**Status change: the central negative finding above still stands (no published
+canonical 7x7 exists), but the derivation described in §4 has now been carried
+out and its output is committed at `data/yeo/yeo7x7_sc.json`.**
+
+Produced by:
+
+```bash
+python -m neuromesh.graphs.cli yeo-derive \
+    --matrix strucMatrix_ctx_schaefer_200.csv \
+    --labels strucLabels_ctx_schaefer_200.csv
+```
+
+## W2.1 Source actually used
+
+| Item | Value |
+|---|---|
+| Provider | ENIGMA Toolbox, `github.com/MICA-MNI/ENIGMA` |
+| Path | `enigmatoolbox/datasets/matrices/hcp_connectivity/` |
+| Matrix file | `strucMatrix_ctx_schaefer_200.csv` (103,628 B) |
+| Labels file | `strucLabels_ctx_schaefer_200.csv` (5,277 B) |
+| Modality | **Structural** (diffusion tractography), not functional |
+| Parcellation | Schaefer2018, 200 cortical parcels, `7Networks` order |
+| Cohort | "unrelated healthy adults" from the HCP — **count still not stated** |
+
+SHA-256 of the exact files used is recorded in
+`provenance.source_sha256` inside the committed JSON, so the derivation can be
+re-run against identical inputs.
+
+## W2.2 Resolved unresolved items
+
+**U3 — licence: RESOLVED.** The ENIGMA Toolbox repository is licensed
+**BSD-3-Clause** (verified via the GitHub licence API and the `LICENSE` file,
+"Copyright (c) 2020, saratheriver"). Redistribution in source form is permitted
+provided the copyright notice, conditions and disclaimer are retained.
+**A derived matrix may therefore be committed to the public repository**, with
+attribution, which is what `data/yeo/yeo7x7_sc.json` carries in its
+`provenance.licence` and `provenance.citation` fields.
+
+**U4 — parcel count: RESOLVED as 200.** The submitted proposal specifies
+Schaefer-200, and ENIGMA ships exactly that. Parcels per network are unequal —
+Vis 29, SomMot 35, DorsAttn 26, SalVentAttn 22, Limbic 12, Cont 30, Default 46
+— which is precisely why the aggregation rule is a **mean** and not a sum.
+
+**U5 — SC vs FC: RESOLVED in favour of SC as primary**, per the abstract.
+Structural was used. An FC-derived sensitivity matrix has not been produced and
+remains optional. Note the circularity argument for why FC cannot be primary:
+the Yeo networks were themselves defined by clustering resting-state functional
+connectivity, so an FC block matrix would partly re-encode the parcellation.
+
+**U6 — procedure verified by execution: RESOLVED.** §4 was previously
+"verified by documentation". It has now been run end to end. One correction to
+§4 step 2: the matrices were read directly from the provider's CSV files rather
+than through `load_sc()`, so **no `enigmatoolbox` installation was required**.
+The CSVs are the same artefacts the Python API returns.
+
+## W2.3 Still unresolved
+
+**U1 — ENIGMA HCP subject count: STILL UNRESOLVED.** The toolbox's HCP
+connectivity documentation page states only "a cohort of unrelated healthy
+adults from the Human Connectome Project (HCP)" and gives no number. It was
+searched again in Week 2 and no count appears. **No cohort size is cited
+anywhere in this repository, and none may be invented.** It must be read out of
+the preprint (DOI 10.1101/2020.12.21.423838) before the methods section can
+state one.
+
+**U2 — nilearn fetcher signature: NOT APPLICABLE.** nilearn was not needed; the
+provider CSVs were used directly. The item is closed as moot rather than
+answered.
+
+## W2.4 Verified properties of the source data
+
+Checked before any aggregation, and asserted by the derivation code rather than
+assumed:
+
+- 200 x 200, and exactly symmetric (`max|M - M.T| = 0.0`).
+- 200 labels, every one parsing to one of the seven networks; all seven present.
+- All entries finite. Range −1.9169 to 11.1710.
+- Diagonal all zero.
+- Non-zero density 12.1% — the provider's distance-dependent thresholding.
+- **16 of 4,822 non-zero entries are negative** (0.33%), a consequence of the
+  provider's log transform. They are legitimate log-weights, not errors.
+
+## W2.5 Aggregation rule, as executed
+
+For block (A, B): the arithmetic **mean** of the source matrix entries over all
+parcel pairs `i in A, j in B`, excluding parcel self-pairs when `A == B`.
+
+Consequences recorded in the committed file and repeated here because they
+belong in the methods section:
+
+1. The source is **log-transformed**, so block values are means of transformed
+   streamline counts. The transform is non-linear and was **not** inverted.
+2. The source is **thresholded**, so a block mean blends connection *strength*
+   with connection *density*. Per-block density is stored separately in
+   `provenance.block_density`.
+3. **All 49 resulting block means are non-negative** (minimum 0.0516), so no
+   shift or re-transform was applied. The derivation refuses to emit a negative
+   block mean rather than silently shifting one.
+4. A network with a single parcel has no within-network parcel pair, so its
+   diagonal would be undefined; the derivation **raises** rather than
+   substituting zero. Schaefer-200 gives every network at least 12 parcels, so
+   this does not arise with the data in use.
+
+## W2.6 Result
+
+Within-network connectivity exceeds between-network by a factor of **3.17** on
+average, and the off-diagonal is strongly heterogeneous (visual-somatomotor
+0.056 against default-frontoparietal 1.234). The full 7x7 is reproduced in
+`docs/track_a.md` §13.2.
+
+The fallback plan in §6 above was **not** needed and was not used. No numerical
+connectivity value in this repository is invented, estimated or hand-written.

@@ -17,6 +17,8 @@ deviations stay visible rather than hidden behind the defaults.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -25,7 +27,14 @@ from .fixtures import (
     generate_fixture_set,
     load_fixture_set,
 )
-from .generators import barabasi_albert, erdos_renyi, generate_graph, watts_strogatz
+from .generators import (
+    barabasi_albert,
+    erdos_renyi,
+    generate_graph,
+    modular,
+    watts_strogatz,
+    yeo_sbm,
+)
 from .spec import (
     DEFAULT_FIXTURE_SEED,
     POPULATION_SIZES,
@@ -33,6 +42,12 @@ from .spec import (
     GraphSpec,
 )
 from .validation import check_reproducible, validate_graph
+from .yeo import (
+    YeoMatrixUnavailableError,
+    derive_yeo7_matrix,
+    load_yeo_matrix,
+    yeo_matrix_path,
+)
 
 # Reasons a mean-degree miss is a model constraint rather than a defect.
 _BA_STANDARD_REASON = (
@@ -49,6 +64,8 @@ _CANONICAL = (
     ("ER (G(n,m))", "er", {}, None),
     ("WS (p=0.1)", "ws", {}, None),
     ("BA (degree-matched)", "ba", {}, None),
+    ("Modular (7 blocks)", "modular", {}, None),
+    ("Yeo-SBM (empirical)", "yeo_sbm", {}, None),
 )
 
 #: Rows kept for auditability; these are NOT the shipped fixtures.
@@ -57,7 +74,13 @@ _DIAGNOSTIC = (
     ("BA (standard)", "ba", {"variant": "standard"}, _BA_STANDARD_REASON),
 )
 
-_GENERATORS = {"er": erdos_renyi, "ws": watts_strogatz, "ba": barabasi_albert}
+_GENERATORS = {
+    "er": erdos_renyi,
+    "ws": watts_strogatz,
+    "ba": barabasi_albert,
+    "modular": modular,
+    "yeo_sbm": yeo_sbm,
+}
 
 
 def _row(
@@ -218,6 +241,60 @@ def cmd_verify_fixtures(args: argparse.Namespace) -> int:
     return 0 if failures == 0 else 1
 
 
+def cmd_yeo_derive(args: argparse.Namespace) -> int:
+    """Aggregate a parcel-level connectome into the committed 7x7 matrix."""
+    source_sha256 = {}
+    for path in (Path(args.matrix), Path(args.labels)):
+        if path.is_file():
+            source_sha256[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    record = derive_yeo7_matrix(
+        args.matrix,
+        args.labels,
+        source_urls=list(args.source_url or []),
+        source_sha256=source_sha256,
+        notes=args.notes or "",
+    )
+    out = Path(args.out) if args.out else yeo_matrix_path()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    networks = record["networks"]
+    matrix = record["matrix"]
+    provenance = record["provenance"]
+    print(f"Wrote {out}  (schema_version {record['schema_version']})")
+    print(f"  parcellation : {provenance['parcellation']} ({provenance['modality']})")
+    print(f"  parcels      : {provenance['n_parcels']} -> {provenance['parcels_per_network']}")
+    print(f"  aggregation  : {provenance['aggregation']}")
+    print(f"  within/between mean ratio : {provenance['within_between_ratio']:.3f}")
+    print("\n  7x7 block means (rows and columns in YEO7 order):")
+    print("    " + " ".join(f"{name[:8]:>9}" for name in networks))
+    for i, name in enumerate(networks):
+        print(f"  {name[:11]:11} " + " ".join(f"{v:9.4f}" for v in matrix[i]))
+    return 0
+
+
+def cmd_yeo_show(args: argparse.Namespace) -> int:
+    """Print and revalidate the committed 7x7 matrix."""
+    try:
+        matrix, record = load_yeo_matrix(args.path)
+    except YeoMatrixUnavailableError as exc:
+        print(f"Yeo matrix unavailable: {exc}")
+        return 1
+    provenance = record["provenance"]
+    print(f"Loaded and validated (schema_version {record['schema_version']})")
+    print(f"  source      : {provenance.get('source')}")
+    print(f"  parcellation: {provenance.get('parcellation')} ({provenance.get('modality')})")
+    print(f"  licence     : {provenance.get('licence')}")
+    print(f"  retrieved   : {provenance.get('retrieved_utc')}")
+    print("\n  " + " ".join(f"{name[:8]:>9}" for name in record["networks"]))
+    for i, name in enumerate(record["networks"]):
+        print(f"  {name[:11]:11} " + " ".join(f"{v:9.4f}" for v in matrix[i]))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m neuromesh.graphs.cli",
@@ -243,6 +320,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_ver = sub.add_parser("verify-fixtures", help="reload and revalidate fixtures")
     p_ver.add_argument("--out", default=str(DEFAULT_FIXTURE_DIR))
     p_ver.set_defaults(func=cmd_verify_fixtures)
+
+    p_der = sub.add_parser(
+        "yeo-derive",
+        help="derive the 7x7 Yeo structural matrix from a parcel-level connectome",
+    )
+    p_der.add_argument("--matrix", required=True, help="parcel-level matrix CSV")
+    p_der.add_argument("--labels", required=True, help="parcel label CSV")
+    p_der.add_argument("--out", default=None, help="output JSON (default: committed path)")
+    p_der.add_argument(
+        "--source-url", action="append", default=[], help="source URL (repeatable)"
+    )
+    p_der.add_argument("--notes", default="", help="free-text provenance note")
+    p_der.set_defaults(func=cmd_yeo_derive)
+
+    p_show = sub.add_parser("yeo-show", help="print and revalidate the 7x7 Yeo matrix")
+    p_show.add_argument("--path", default=None)
+    p_show.set_defaults(func=cmd_yeo_show)
 
     return parser
 

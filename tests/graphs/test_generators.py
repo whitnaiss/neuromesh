@@ -29,9 +29,11 @@ from neuromesh.graphs import (
     erdos_renyi,
     generate_from_spec,
     mean_degree,
+    modular,
     target_edge_count,
     validate_graph,
     watts_strogatz,
+    yeo_sbm,
 )
 
 SEEDS = (0, 1, 2, 3, 4)
@@ -41,6 +43,8 @@ CANONICAL_GENERATORS = {
     "er": erdos_renyi,
     "ws": watts_strogatz,
     "ba": barabasi_albert,
+    "modular": modular,
+    "yeo_sbm": yeo_sbm,
 }
 
 
@@ -136,12 +140,29 @@ def test_identical_seeds_give_identical_graphs(topology, n):
 def test_different_seeds_give_different_graphs(topology, n):
     """Seeding must actually vary the draw, otherwise reproducibility is vacuous.
 
-    At N = 7 the degree-matched BA graph is a clique-plus-two, which has very
-    few distinct realisations, so this is only asserted from N = 14 -- the
-    scale at which topology comparisons begin.
+    Two documented exemptions at the N = 7 boundary, both asserted from N = 14
+    upwards -- the scale at which topology comparisons begin:
+
+    * ``er``, ``ws``, ``ba`` -- the degree-matched BA graph at N = 7 is a
+      clique-plus-two with very few distinct realisations; the exemption is
+      applied to all three Week 1 topologies as a single documented boundary
+      case.
+    * ``yeo_sbm`` -- at N = 7 each block holds one node, so every block pair
+      admits at most one edge and the 21 empirical weights rank them uniquely.
+      The graph is then *fully determined by the data*: it is exactly the 14
+      strongest inter-network connections, with no randomness left for a seed
+      to vary. That is the faithful result at this size, not a defect.
+
+    ``modular`` is **not** exempt: its uniform weights leave the choice of
+    block pairs genuinely tied, so seeded tie-breaking must still vary it.
     """
-    if n == 7:
+    if n == 7 and topology in ("er", "ws", "ba"):
         pytest.skip("N=7 is a boundary case with too few distinct realisations")
+    if n == 7 and topology == "yeo_sbm":
+        pytest.skip(
+            "N=7 yeo_sbm is fully determined by the empirical weights: every "
+            "block pair admits one edge and the 21 weights are distinct"
+        )
 
     edge_sets = set()
     for seed in SEEDS:
@@ -352,10 +373,17 @@ def test_invalid_parameters_raise(topology, kwargs, match):
 
 
 def test_unknown_topology_rejected():
-    with pytest.raises(GraphParameterError, match="unknown topology"):
-        GraphSpec(topology="modular", n=14)
-    with pytest.raises(GraphParameterError, match="unknown topology"):
-        GraphSpec(topology="yeo_sbm", n=14)
+    """``modular`` and ``yeo_sbm`` are now implemented; these never were."""
+    for unknown in ("small_world", "chain", "star", ""):
+        with pytest.raises(GraphParameterError, match="unknown topology"):
+            GraphSpec(topology=unknown, n=14)
+
+
+def test_every_contract_topology_is_accepted_by_the_spec():
+    """GraphSpec must admit exactly the five topologies the study declares."""
+    for topology in TOPOLOGIES:
+        assert GraphSpec(topology=topology, n=14).topology == topology
+    assert set(TOPOLOGIES) == {"er", "ws", "ba", "modular", "yeo_sbm"}
 
 
 def test_unknown_generator_param_rejected():
@@ -408,8 +436,8 @@ def test_mean_degree_undefined_for_empty_graph():
 # 9: all five population sizes are supported end to end
 # --------------------------------------------------------------------------
 
-def test_all_fifteen_topology_size_combinations_validate():
-    """The full matrix: 3 topologies x 5 sizes, all checks clean."""
+def test_all_twenty_five_topology_size_combinations_validate():
+    """The full matrix: 5 topologies x 5 sizes, all checks clean."""
     results = []
     for topology in TOPOLOGIES:
         for n in POPULATION_SIZES:
@@ -418,7 +446,8 @@ def test_all_fifteen_topology_size_combinations_validate():
             results.append(result)
             assert result.ok, result.summary()
             assert not result.exceptions, result.summary()
-    assert len(results) == 15
+    assert len(results) == 25
+    assert len(TOPOLOGIES) == 5
 
 
 def test_population_sizes_are_the_studys_five():

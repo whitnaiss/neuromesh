@@ -73,12 +73,16 @@ from typing import Any
 import networkx as nx
 import numpy as np
 
+from .blocks import N_BLOCKS, sample_block_graph, validate_block_weights
 from .spec import (
+    DEFAULT_WITHIN_BETWEEN_RATIO,
     GENERATOR_VERSION,
     TARGET_MEAN_DEGREE,
     GraphParameterError,
     GraphSpec,
+    generator_version,
 )
+from .yeo import load_yeo_matrix
 
 __all__ = [
     "GraphMetadata",
@@ -86,6 +90,8 @@ __all__ = [
     "erdos_renyi",
     "watts_strogatz",
     "barabasi_albert",
+    "modular",
+    "yeo_sbm",
     "target_edge_count",
     "mean_degree",
 ]
@@ -246,6 +252,7 @@ def _describe(
             graph.number_of_edges() == target_edge_count(n, target_mean_degree)
         ),
         params=params,
+        generator_version=generator_version(topology),
     )
 
 
@@ -516,6 +523,213 @@ def barabasi_albert(
 
 
 # --------------------------------------------------------------------------
+# D. Modular
+# --------------------------------------------------------------------------
+
+def modular(
+    n: int,
+    seed: int = 0,
+    *,
+    target_mean_degree: float = TARGET_MEAN_DEGREE,
+    within_between_ratio: float = DEFAULT_WITHIN_BETWEEN_RATIO,
+    ensure_connected: bool = True,
+    max_attempts: int = 1000,
+) -> tuple[nx.Graph, GraphMetadata]:
+    """Seven equal communities, densely linked within and uniformly between.
+
+    A planted-partition block model: every within-community node pair carries
+    the same preference, every between-community pair carries the same (lower)
+    preference, so the only structure is community membership itself. Each node
+    gains a ``community`` attribute in ``0..6``, which
+    :func:`neuromesh.graphs.assign_roles` maps to the seven functional roles.
+
+    Parameters
+    ----------
+    within_between_ratio:
+        How much more likely a within-community pair is to be joined than a
+        between-community pair, before the edge budget is applied. The default
+        is a parameter, not a tuned value, and the realised structure it
+        produces is measured rather than assumed -- see
+        :func:`neuromesh.graphs.community_profile`. A ratio of 1.0 degenerates
+        to a plain fixed-edge-count random graph with labelled blocks.
+    ensure_connected:
+        Redraw with derived sub-seeds until connected. The draw count is
+        recorded in ``metadata.attempts``.
+
+    Notes
+    -----
+    Mean degree is exactly ``target_mean_degree`` at every N, because the total
+    edge count is fixed at ``round(k*N/2)`` and only its division among block
+    pairs depends on the ratio.
+
+    **The requested ratio cannot always be realised.** A block pair can hold no
+    more edges than it has node pairs, so at small N the within-community share
+    is capped by capacity rather than by preference: at N = 7 each community
+    holds one node and no within-community edge can exist at all, and at N = 14
+    the seven within-community pairs cap that share at 25% of the budget.
+    ``metadata.params["capacity_clamped"]`` records when this happened, and the
+    realised split is in ``n_within_edges`` / ``n_between_edges``. N = 7
+    modular is not a modular graph in any meaningful sense and should be read
+    the same way as the N = 7 boundary case elsewhere in this study.
+    """
+    _validate_common(n, seed, target_mean_degree)
+    if isinstance(within_between_ratio, bool) or not isinstance(
+        within_between_ratio, (int, float, np.integer, np.floating)
+    ):
+        raise GraphParameterError(
+            "within_between_ratio must be numeric, got "
+            f"{type(within_between_ratio).__name__}"
+        )
+    if not math.isfinite(float(within_between_ratio)) or within_between_ratio <= 0:
+        raise GraphParameterError(
+            "within_between_ratio must be positive and finite, got "
+            f"{within_between_ratio}"
+        )
+
+    n = int(n)
+    ratio = float(within_between_ratio)
+    weights = np.ones((N_BLOCKS, N_BLOCKS), dtype=float)
+    np.fill_diagonal(weights, ratio)
+
+    graph, info = sample_block_graph(
+        n,
+        weights,
+        int(seed),
+        target_mean_degree=target_mean_degree,
+        ensure_connected=ensure_connected,
+        max_attempts=max_attempts,
+    )
+    params = {
+        "model": "planted_partition",
+        "within_between_ratio": ratio,
+        "n_blocks": info["n_blocks"],
+        "block_sizes": info["block_sizes"],
+        "n_within_edges": info["n_within_edges"],
+        "n_between_edges": info["n_between_edges"],
+        "within_fraction": info["within_fraction"],
+        "within_capacity": info["within_capacity"],
+        "capacity_clamped": info["capacity_clamped"],
+        "within_structure_possible": info["within_structure_possible"],
+        "ensure_connected": ensure_connected,
+    }
+    return graph, _describe(
+        graph,
+        topology="modular",
+        n=n,
+        seed=int(seed),
+        target_mean_degree=target_mean_degree,
+        attempts=info["attempts"],
+        params=params,
+    )
+
+
+# --------------------------------------------------------------------------
+# E. Yeo-informed stochastic block model
+# --------------------------------------------------------------------------
+
+def yeo_sbm(
+    n: int,
+    seed: int = 0,
+    *,
+    target_mean_degree: float = TARGET_MEAN_DEGREE,
+    matrix=None,
+    matrix_path=None,
+    ensure_connected: bool = True,
+    max_attempts: int = 1000,
+) -> tuple[nx.Graph, GraphMetadata]:
+    """Stochastic block model whose 7x7 preferences come from brain data.
+
+    Identical machinery to :func:`modular`, but the block preferences are the
+    empirically derived inter-network structural connectivity of the seven Yeo
+    networks instead of one flat within/between contrast. Block ``b`` *is*
+    functional network ``b``: the matrix rows and ``neuromesh.contracts.YEO7``
+    are in the same order, which is what lets
+    :func:`neuromesh.graphs.assign_roles` read roles straight off the blocks.
+
+    Parameters
+    ----------
+    matrix:
+        A 7x7 array of block preferences. **Intended for tests only.** Passing
+        a matrix bypasses the empirical file, so the graph is no longer
+        data-informed; ``metadata.params["matrix_source"]`` is set to
+        ``"caller_supplied"`` to keep that visible in every downstream log.
+    matrix_path:
+        Alternative location for the derived matrix file.
+
+    Raises
+    ------
+    neuromesh.graphs.YeoMatrixUnavailableError
+        When no matrix is supplied and the derived empirical matrix is absent.
+        This topology is *defined* by its data, so the generator fails loudly
+        rather than substituting plausible-looking numbers.
+
+    Notes
+    -----
+    The empirical matrix sets only *relative* block preferences. Absolute
+    density is set by this study's matched mean degree, so the generated graph
+    reproduces the brain connectome's between-network *contrast*, not its
+    density -- it is a brain-informed topology, not a brain simulation.
+
+    Finite-size limits apply exactly as in :func:`modular`: within-block edges
+    are impossible at N = 7 and capped at 25% of the budget at N = 14, however
+    strong the empirical within-network preference. The realised split is
+    recorded in ``metadata.params``.
+    """
+    _validate_common(n, seed, target_mean_degree)
+    n = int(n)
+
+    if matrix is None:
+        weights, record = load_yeo_matrix(matrix_path)
+        provenance = record.get("provenance", {})
+        matrix_source = "empirical"
+        matrix_provenance = {
+            "source": provenance.get("source"),
+            "parcellation": provenance.get("parcellation"),
+            "modality": provenance.get("modality"),
+            "aggregation": provenance.get("aggregation"),
+            "licence": provenance.get("licence"),
+        }
+    else:
+        weights = validate_block_weights(matrix, N_BLOCKS)
+        matrix_source = "caller_supplied"
+        matrix_provenance = {
+            "source": "caller-supplied matrix; NOT empirical brain data",
+        }
+
+    graph, info = sample_block_graph(
+        n,
+        weights,
+        int(seed),
+        target_mean_degree=target_mean_degree,
+        ensure_connected=ensure_connected,
+        max_attempts=max_attempts,
+    )
+    params = {
+        "model": "stochastic_block_model",
+        "matrix_source": matrix_source,
+        "matrix_provenance": matrix_provenance,
+        "n_blocks": info["n_blocks"],
+        "block_sizes": info["block_sizes"],
+        "n_within_edges": info["n_within_edges"],
+        "n_between_edges": info["n_between_edges"],
+        "within_fraction": info["within_fraction"],
+        "within_capacity": info["within_capacity"],
+        "capacity_clamped": info["capacity_clamped"],
+        "within_structure_possible": info["within_structure_possible"],
+        "ensure_connected": ensure_connected,
+    }
+    return graph, _describe(
+        graph,
+        topology="yeo_sbm",
+        n=n,
+        seed=int(seed),
+        target_mean_degree=target_mean_degree,
+        attempts=info["attempts"],
+        params=params,
+    )
+
+
+# --------------------------------------------------------------------------
 # dispatcher
 # --------------------------------------------------------------------------
 
@@ -523,6 +737,8 @@ _GENERATORS: dict = {
     "er": erdos_renyi,
     "ws": watts_strogatz,
     "ba": barabasi_albert,
+    "modular": modular,
+    "yeo_sbm": yeo_sbm,
 }
 
 

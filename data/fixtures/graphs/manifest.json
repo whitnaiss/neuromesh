@@ -1,5 +1,5 @@
 {
-  "count": 15,
+  "count": 25,
   "fixtures": [
     {
       "attempts": 1,
@@ -245,9 +245,364 @@
       },
       "seed": 0,
       "topology": "ba"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "modular_n007_seed0.json",
+      "mean_degree": 4.0,
+      "n": 7,
+      "n_edges": 14,
+      "params": {
+        "block_sizes": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "model": "planted_partition",
+        "n_between_edges": 14,
+        "n_blocks": 7,
+        "n_within_edges": 0,
+        "within_between_ratio": 10.0,
+        "within_capacity": 0,
+        "within_fraction": 0.0,
+        "within_structure_possible": false
+      },
+      "seed": 0,
+      "topology": "modular"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "modular_n014_seed0.json",
+      "mean_degree": 4.0,
+      "n": 14,
+      "n_edges": 28,
+      "params": {
+        "block_sizes": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "capacity_clamped": true,
+        "ensure_connected": true,
+        "model": "planted_partition",
+        "n_between_edges": 21,
+        "n_blocks": 7,
+        "n_within_edges": 7,
+        "within_between_ratio": 10.0,
+        "within_capacity": 7,
+        "within_fraction": 0.25,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "modular"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "modular_n028_seed0.json",
+      "mean_degree": 4.0,
+      "n": 28,
+      "n_edges": 56,
+      "params": {
+        "block_sizes": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "model": "planted_partition",
+        "n_between_edges": 21,
+        "n_blocks": 7,
+        "n_within_edges": 35,
+        "within_between_ratio": 10.0,
+        "within_capacity": 42,
+        "within_fraction": 0.625,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "modular"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "modular_n056_seed0.json",
+      "mean_degree": 4.0,
+      "n": 56,
+      "n_edges": 112,
+      "params": {
+        "block_sizes": [
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "model": "planted_partition",
+        "n_between_edges": 42,
+        "n_blocks": 7,
+        "n_within_edges": 70,
+        "within_between_ratio": 10.0,
+        "within_capacity": 196,
+        "within_fraction": 0.625,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "modular"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "modular_n112_seed0.json",
+      "mean_degree": 4.0,
+      "n": 112,
+      "n_edges": 224,
+      "params": {
+        "block_sizes": [
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "model": "planted_partition",
+        "n_between_edges": 84,
+        "n_blocks": 7,
+        "n_within_edges": 140,
+        "within_between_ratio": 10.0,
+        "within_capacity": 840,
+        "within_fraction": 0.625,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "modular"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "yeo_sbm_n007_seed0.json",
+      "mean_degree": 4.0,
+      "n": 7,
+      "n_edges": 14,
+      "params": {
+        "block_sizes": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "capacity_clamped": true,
+        "ensure_connected": true,
+        "matrix_provenance": {
+          "aggregation": "arithmetic mean of source matrix entries over all parcel pairs in the block; parcel self-pairs excluded on the diagonal",
+          "licence": "BSD-3-Clause (ENIGMA Toolbox)",
+          "modality": "structural",
+          "parcellation": "Schaefer2018_200Parcels_7Networks",
+          "source": "ENIGMA Toolbox group-average HCP connectome"
+        },
+        "matrix_source": "empirical",
+        "model": "stochastic_block_model",
+        "n_between_edges": 14,
+        "n_blocks": 7,
+        "n_within_edges": 0,
+        "within_capacity": 0,
+        "within_fraction": 0.0,
+        "within_structure_possible": false
+      },
+      "seed": 0,
+      "topology": "yeo_sbm"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "yeo_sbm_n014_seed0.json",
+      "mean_degree": 4.0,
+      "n": 14,
+      "n_edges": 28,
+      "params": {
+        "block_sizes": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "capacity_clamped": true,
+        "ensure_connected": true,
+        "matrix_provenance": {
+          "aggregation": "arithmetic mean of source matrix entries over all parcel pairs in the block; parcel self-pairs excluded on the diagonal",
+          "licence": "BSD-3-Clause (ENIGMA Toolbox)",
+          "modality": "structural",
+          "parcellation": "Schaefer2018_200Parcels_7Networks",
+          "source": "ENIGMA Toolbox group-average HCP connectome"
+        },
+        "matrix_source": "empirical",
+        "model": "stochastic_block_model",
+        "n_between_edges": 21,
+        "n_blocks": 7,
+        "n_within_edges": 7,
+        "within_capacity": 7,
+        "within_fraction": 0.25,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "yeo_sbm"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "yeo_sbm_n028_seed0.json",
+      "mean_degree": 4.0,
+      "n": 28,
+      "n_edges": 56,
+      "params": {
+        "block_sizes": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "matrix_provenance": {
+          "aggregation": "arithmetic mean of source matrix entries over all parcel pairs in the block; parcel self-pairs excluded on the diagonal",
+          "licence": "BSD-3-Clause (ENIGMA Toolbox)",
+          "modality": "structural",
+          "parcellation": "Schaefer2018_200Parcels_7Networks",
+          "source": "ENIGMA Toolbox group-average HCP connectome"
+        },
+        "matrix_source": "empirical",
+        "model": "stochastic_block_model",
+        "n_between_edges": 40,
+        "n_blocks": 7,
+        "n_within_edges": 16,
+        "within_capacity": 42,
+        "within_fraction": 0.2857142857142857,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "yeo_sbm"
+    },
+    {
+      "attempts": 1,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "yeo_sbm_n056_seed0.json",
+      "mean_degree": 4.0,
+      "n": 56,
+      "n_edges": 112,
+      "params": {
+        "block_sizes": [
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "matrix_provenance": {
+          "aggregation": "arithmetic mean of source matrix entries over all parcel pairs in the block; parcel self-pairs excluded on the diagonal",
+          "licence": "BSD-3-Clause (ENIGMA Toolbox)",
+          "modality": "structural",
+          "parcellation": "Schaefer2018_200Parcels_7Networks",
+          "source": "ENIGMA Toolbox group-average HCP connectome"
+        },
+        "matrix_source": "empirical",
+        "model": "stochastic_block_model",
+        "n_between_edges": 76,
+        "n_blocks": 7,
+        "n_within_edges": 36,
+        "within_capacity": 196,
+        "within_fraction": 0.32142857142857145,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "yeo_sbm"
+    },
+    {
+      "attempts": 4,
+      "connected": true,
+      "degree_matched_exactly": true,
+      "file": "yeo_sbm_n112_seed0.json",
+      "mean_degree": 4.0,
+      "n": 112,
+      "n_edges": 224,
+      "params": {
+        "block_sizes": [
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16
+        ],
+        "capacity_clamped": false,
+        "ensure_connected": true,
+        "matrix_provenance": {
+          "aggregation": "arithmetic mean of source matrix entries over all parcel pairs in the block; parcel self-pairs excluded on the diagonal",
+          "licence": "BSD-3-Clause (ENIGMA Toolbox)",
+          "modality": "structural",
+          "parcellation": "Schaefer2018_200Parcels_7Networks",
+          "source": "ENIGMA Toolbox group-average HCP connectome"
+        },
+        "matrix_source": "empirical",
+        "model": "stochastic_block_model",
+        "n_between_edges": 151,
+        "n_blocks": 7,
+        "n_within_edges": 73,
+        "within_capacity": 840,
+        "within_fraction": 0.32589285714285715,
+        "within_structure_possible": true
+      },
+      "seed": 0,
+      "topology": "yeo_sbm"
     }
   ],
-  "generated_utc": "2026-10-25T03:53:28+00:00",
+  "generated_utc": "2026-11-18T05:39:50+00:00",
   "generator_version": "trackA-week1-1.0.0",
   "networkx_version": "3.6.1",
   "schema_version": 1

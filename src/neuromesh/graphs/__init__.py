@@ -3,12 +3,17 @@
 Public entry points only. Implement them in this package (e.g. generators.py,
 yeo_sbm.py, roles.py, removal.py, metrics.py) and keep these signatures.
 
-Week 1 status
--------------
-``generate_graph`` is implemented for the ``er``, ``ws`` and ``ba``
-topologies. ``modular`` and ``yeo_sbm`` are Week 2 work and raise
-``NotImplementedError``; ``assign_roles``, ``remove_nodes`` and
-``structural_metrics`` are still placeholders owned by later weeks.
+Status
+------
+``generate_graph`` is implemented for all five topologies: ``er``, ``ws``,
+``ba``, ``modular`` and ``yeo_sbm``. ``assign_roles`` is implemented and
+assigns the seven Yeo functional roles in balance. ``remove_nodes`` and
+``structural_metrics`` remain placeholders owned by later weeks.
+
+``yeo_sbm`` is defined by empirical data: it needs the derived 7x7 inter-network
+structural matrix (``data/yeo/yeo7x7_sc.json``) and raises
+:class:`YeoMatrixUnavailableError` when that file is absent, rather than
+falling back to invented block weights.
 
 Two layers live here, deliberately
 ----------------------------------
@@ -57,6 +62,16 @@ import networkx as nx
 
 from neuromesh.contracts import DEFAULT_MEAN_DEGREE, RemovalSpec, Topology
 
+from .blocks import (
+    N_BLOCKS,
+    allocate_block_edges,
+    balanced_block_sizes,
+    block_assignment,
+    community_profile,
+    pair_capacity,
+    sample_block_graph,
+    validate_block_weights,
+)
 from .fixtures import (
     DEFAULT_FIXTURE_DIR,
     SCHEMA_VERSION,
@@ -74,23 +89,30 @@ from .generators import (
     barabasi_albert,
     erdos_renyi,
     mean_degree,
+    modular,
     target_edge_count,
     watts_strogatz,
+    yeo_sbm,
 )
 from .generators import (
     generate_graph as generate_from_spec,
 )
+from .roles import assign_roles, role_counts, roles_are_balanced
 from .spec import (
+    BLOCK_TOPOLOGIES,
     BOUNDARY_N,
     DEFAULT_FIXTURE_SEED,
+    DEFAULT_WITHIN_BETWEEN_RATIO,
     DEGREE_TOLERANCE,
     EXPERIMENT_SEEDS,
     GENERATOR_VERSION,
+    GENERATOR_VERSIONS,
     POPULATION_SIZES,
     TARGET_MEAN_DEGREE,
     TOPOLOGIES,
     GraphParameterError,
     GraphSpec,
+    generator_version,
 )
 from .validation import (
     Check,
@@ -99,9 +121,19 @@ from .validation import (
     degree_deviation,
     validate_graph,
 )
+from .yeo import (
+    DEFAULT_YEO_MATRIX_PATH,
+    SCHAEFER_TO_YEO7,
+    YeoMatrixUnavailableError,
+    derive_yeo7_matrix,
+    load_yeo_matrix,
+    parse_schaefer_label,
+    validate_yeo7_record,
+)
 
 #: Topologies named in ``contracts.Topology`` that Track A has not built yet.
-PLANNED_TOPOLOGIES: tuple[str, ...] = ("modular", "yeo_sbm")
+#: Empty since Week 2: all five declared topologies are implemented.
+PLANNED_TOPOLOGIES: tuple[str, ...] = ()
 
 
 def generate_graph(
@@ -116,9 +148,9 @@ def generate_graph(
     Parameters
     ----------
     topology:
-        ``"er"``, ``"ws"`` or ``"ba"``. ``"modular"`` and ``"yeo_sbm"`` are
-        declared in ``contracts.Topology`` but are Week 2 work and raise
-        ``NotImplementedError``.
+        Any of ``"er"``, ``"ws"``, ``"ba"``, ``"modular"`` or ``"yeo_sbm"`` --
+        the full set declared in ``contracts.Topology``. The two block models
+        additionally give every node a ``community`` attribute in ``0..6``.
     n:
         Number of agents. Node IDs are always the integers ``0 .. n-1``.
     mean_degree:
@@ -146,11 +178,11 @@ def generate_graph(
 
     Raises
     ------
-    NotImplementedError
-        For ``"modular"`` and ``"yeo_sbm"`` (Week 2).
     GraphParameterError
         For an unknown topology or structurally invalid ``n``, ``seed`` or
         ``mean_degree``. Subclasses ``ValueError``.
+    YeoMatrixUnavailableError
+        For ``"yeo_sbm"`` when the derived empirical 7x7 matrix is absent.
 
     Notes
     -----
@@ -159,15 +191,9 @@ def generate_graph(
     conditions the ensemble; the number of draws is recorded in
     ``G.graph["generator_metadata"]["attempts"]``. See ``docs/track_a.md``.
     """
-    if topology in PLANNED_TOPOLOGIES:
-        raise NotImplementedError(
-            f"Track A: topology {topology!r} is Week 2 work (generate_graph "
-            f"implements {TOPOLOGIES})"
-        )
     if topology not in TOPOLOGIES:
         raise GraphParameterError(
-            f"unknown topology {topology!r}; implemented {TOPOLOGIES}, "
-            f"planned {PLANNED_TOPOLOGIES}"
+            f"unknown topology {topology!r}; implemented {TOPOLOGIES}"
         )
 
     graph, metadata = generate_from_spec(
@@ -184,11 +210,6 @@ def generate_graph(
         }
     )
     return graph
-
-
-def assign_roles(graph: nx.Graph, seed: int) -> nx.Graph:
-    """Give every node a YEO7 role, exactly n/7 per role; SBM keeps its blocks."""
-    raise NotImplementedError("Track A: assign_roles")
 
 
 def remove_nodes(graph: nx.Graph, spec: RemovalSpec, seed: int) -> nx.Graph:
@@ -208,25 +229,51 @@ __all__ = [
     "remove_nodes",
     "structural_metrics",
     # spec / constants
+    "BLOCK_TOPOLOGIES",
     "BOUNDARY_N",
     "DEFAULT_FIXTURE_SEED",
+    "DEFAULT_WITHIN_BETWEEN_RATIO",
     "DEGREE_TOLERANCE",
     "EXPERIMENT_SEEDS",
     "GENERATOR_VERSION",
+    "GENERATOR_VERSIONS",
     "POPULATION_SIZES",
     "PLANNED_TOPOLOGIES",
     "TARGET_MEAN_DEGREE",
     "TOPOLOGIES",
     "GraphParameterError",
     "GraphSpec",
+    "generator_version",
     # generators
     "GraphMetadata",
     "barabasi_albert",
     "erdos_renyi",
     "generate_from_spec",
     "mean_degree",
+    "modular",
     "target_edge_count",
     "watts_strogatz",
+    "yeo_sbm",
+    # block models (modular, yeo_sbm)
+    "N_BLOCKS",
+    "allocate_block_edges",
+    "balanced_block_sizes",
+    "block_assignment",
+    "community_profile",
+    "pair_capacity",
+    "sample_block_graph",
+    "validate_block_weights",
+    # roles
+    "role_counts",
+    "roles_are_balanced",
+    # Yeo connectivity matrix
+    "DEFAULT_YEO_MATRIX_PATH",
+    "SCHAEFER_TO_YEO7",
+    "YeoMatrixUnavailableError",
+    "derive_yeo7_matrix",
+    "load_yeo_matrix",
+    "parse_schaefer_label",
+    "validate_yeo7_record",
     # validation
     "Check",
     "ValidationResult",

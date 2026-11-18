@@ -183,13 +183,13 @@ def test_record_to_graph_rejects_non_dict():
 def test_generate_fixture_set_writes_manifest_and_all_combinations(tmp_path):
     manifest = generate_fixture_set(out_dir=tmp_path)
 
-    assert manifest["count"] == len(TOPOLOGIES) * len(POPULATION_SIZES) == 15
+    assert manifest["count"] == len(TOPOLOGIES) * len(POPULATION_SIZES) == 25
     assert (tmp_path / "manifest.json").is_file()
     for entry in manifest["fixtures"]:
         assert (tmp_path / entry["file"]).is_file()
 
     loaded = load_fixture_set(tmp_path)
-    assert len(loaded) == 15
+    assert len(loaded) == 25
     assert set(loaded) == {
         (t, n, DEFAULT_FIXTURE_SEED) for t in TOPOLOGIES for n in POPULATION_SIZES
     }
@@ -202,8 +202,8 @@ def test_load_fixture_set_without_manifest_raises(tmp_path):
 
 def test_multi_seed_fixture_set(tmp_path):
     manifest = generate_fixture_set(out_dir=tmp_path, sizes=(14,), seeds=(0, 1, 2))
-    assert manifest["count"] == 9
-    assert len(load_fixture_set(tmp_path)) == 9
+    assert manifest["count"] == len(TOPOLOGIES) * 3 == 15
+    assert len(load_fixture_set(tmp_path)) == 15
 
 
 # --------------------------------------------------------------------------
