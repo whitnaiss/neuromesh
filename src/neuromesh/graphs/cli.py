@@ -7,6 +7,7 @@ Usage
     python -m neuromesh.graphs.cli validate          # print validation tables
     python -m neuromesh.graphs.cli verify-fixtures   # reload and re-check files
     python -m neuromesh.graphs.cli diameters         # N=112 diameters, 10 vs 12 rounds
+    python -m neuromesh.graphs.cli week4-analysis    # Week 4 tables + figures
 
 ``validate`` prints two tables: the 15 canonical rows (the three topologies
 at the five population sizes, using the default generator settings
@@ -29,6 +30,7 @@ import argparse
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 
 from .analysis import (
@@ -41,6 +43,8 @@ from .analysis import (
     render_measurement_table,
     round_budget_assessment,
 )
+from .curves import AUC_FIELDS, MAX_REMOVAL_FRACTION, ROBUSTNESS_FIELDS
+from .datasets import DEFAULT_OUTPUT_DIR as WEEK4_OUTPUT_DIR
 from .fixtures import (
     DEFAULT_FIXTURE_DIR,
     fixture_filename,
@@ -397,6 +401,247 @@ def nx_version() -> str:
     return networkx.__version__
 
 
+#: Week 4 analysis stages, in dependency order. ``conditions`` is folded into
+#: ``structural`` because it is an aggregation of it, and ``figures`` needs the
+#: structural and robustness tables, so asking for figures implies both.
+_WEEK4_STAGES = ("structural", "positional", "robustness", "figures")
+
+
+def cmd_week4(args: argparse.Namespace) -> int:
+    """Run the Week 4 analysis and write its tables (and optionally figures).
+
+    Deterministic and offline. Every graph is regenerated from its seed and
+    ``yeo_sbm`` reads the committed empirical matrix from the package data;
+    nothing is downloaded and no LLM is involved in any number produced here.
+    """
+    from .datasets import (
+        CONDITION_FIELDS,
+        aggregate_conditions,
+        build_positional_table,
+        build_robustness_tables,
+        build_structural_table,
+        expected_node_row_count,
+        write_csv,
+        write_json,
+    )
+    from .metrics import POSITIONAL_FIELDS, STRUCTURAL_FIELDS
+
+    stages = set(args.only) if args.only else set(_WEEK4_STAGES)
+    if "figures" in stages:
+        stages |= {"structural", "robustness"}
+
+    out_dir = Path(args.out)
+    topologies = tuple(args.topologies)
+    sizes = tuple(args.sizes)
+    seeds = tuple(args.seeds)
+    expected_graphs = len(topologies) * len(sizes) * len(seeds)
+
+    print(
+        f"\n### Track A Week 4 analysis\n\n"
+        f"  topologies : {list(topologies)}\n"
+        f"  sizes      : {list(sizes)}\n"
+        f"  seeds      : {list(seeds)}\n"
+        f"  instances  : {expected_graphs}\n"
+        f"  stages     : {sorted(stages)}\n"
+        f"  output     : {out_dir}\n"
+    )
+
+    failures: list[str] = []
+    timings: dict[str, float] = {}
+    written: list[Path] = []
+    analysis: dict = {}
+
+    if "structural" in stages:
+        started = time.perf_counter()
+        structural = build_structural_table(topologies, sizes, seeds)
+        conditions = aggregate_conditions(structural)
+        timings["structural"] = time.perf_counter() - started
+        analysis["structural"] = structural
+
+        disconnected = [r["graph_id"] for r in structural if r["n_components"] != 1]
+        unbalanced = [r["graph_id"] for r in structural if not r["roles_balanced"]]
+        mismatched = [
+            r["graph_id"]
+            for r in structural
+            if r["n_edges"] != 2 * r["n_nodes"] or r["mean_degree"] != 4.0
+        ]
+        if len(structural) != expected_graphs:
+            failures.append(
+                f"structural table has {len(structural)} rows, expected "
+                f"{expected_graphs}"
+            )
+        for label, bad in (
+            ("disconnected original graph(s)", disconnected),
+            ("unbalanced role assignment(s)", unbalanced),
+            ("mean degree not exactly 4 / E != 2N", mismatched),
+        ):
+            if bad:
+                failures.append(f"{label}: {bad[:5]}")
+
+        if args.write:
+            written.append(
+                write_csv(
+                    out_dir / "structural_metrics.csv", structural, STRUCTURAL_FIELDS
+                )
+            )
+            written.append(
+                write_csv(
+                    out_dir / "condition_summaries.csv", conditions, CONDITION_FIELDS
+                )
+            )
+        print(
+            f"  [structural] {len(structural)} instance rows, "
+            f"{len(conditions)} condition rows  ({timings['structural']:.2f}s)"
+        )
+
+    if "positional" in stages:
+        started = time.perf_counter()
+        positional = build_positional_table(topologies, sizes, seeds)
+        timings["positional"] = time.perf_counter() - started
+        analysis["positional"] = positional
+
+        expected_nodes = expected_node_row_count(topologies, sizes, seeds)
+        if len(positional) != expected_nodes:
+            failures.append(
+                f"positional table has {len(positional)} rows, expected "
+                f"{expected_nodes}"
+            )
+        keys = {(r["graph_id"], r["node_id"]) for r in positional}
+        if len(keys) != len(positional):
+            failures.append("positional table has duplicate (graph_id, node_id) keys")
+
+        if args.write:
+            written.append(
+                write_csv(
+                    out_dir / "positional_covariates.csv",
+                    positional,
+                    POSITIONAL_FIELDS,
+                )
+            )
+        print(
+            f"  [positional] {len(positional)} node rows "
+            f"(expected {expected_nodes})  ({timings['positional']:.2f}s)"
+        )
+
+    if "robustness" in stages:
+        started = time.perf_counter()
+        robustness, auc, trajectories = build_robustness_tables(
+            topologies, sizes, seeds, max_fraction=args.max_fraction
+        )
+        timings["robustness"] = time.perf_counter() - started
+        analysis["robustness"] = robustness
+        checkpoints = [p for p in robustness if p["is_checkpoint"]]
+
+        expected_trajectories = expected_graphs * 2
+        if len(trajectories) != expected_trajectories:
+            failures.append(
+                f"{len(trajectories)} trajectories, expected "
+                f"{expected_trajectories} (2 strategies per instance)"
+            )
+        for trajectory in trajectories:
+            first = trajectory["points"][0]
+            if first["k_removed"] != 0:
+                failures.append(f"{trajectory['graph_id']}: curve does not start at k=0")
+            sizes_seen = [p["largest_component_size"] for p in trajectory["points"]]
+            pairs = zip(sizes_seen, sizes_seen[1:], strict=False)
+            if any(later > earlier for earlier, later in pairs):
+                failures.append(
+                    f"{trajectory['graph_id']} ({trajectory['strategy']}): largest "
+                    "component grew as nodes were removed"
+                )
+
+        if args.write:
+            written.append(
+                write_csv(
+                    out_dir / "robustness_curves.csv", robustness, ROBUSTNESS_FIELDS
+                )
+            )
+            written.append(
+                write_csv(
+                    out_dir / "robustness_checkpoints.csv",
+                    checkpoints,
+                    ROBUSTNESS_FIELDS,
+                )
+            )
+            written.append(write_csv(out_dir / "robustness_auc.csv", auc, AUC_FIELDS))
+        print(
+            f"  [robustness] {len(trajectories)} trajectories, "
+            f"{len(robustness)} curve points, {len(checkpoints)} checkpoints, "
+            f"{len(auc)} AUC rows  ({timings['robustness']:.2f}s)"
+        )
+
+        print("\n  Mean normalised AUC of the largest-component-fraction curve")
+        print("  (1.0 = no loss; graph-only, NOT a task-performance measure):\n")
+        header = ["Topology", *[f"N={n}" for n in sizes]]
+        rows_out = []
+        for strategy in ("random", "targeted"):
+            for topology in topologies:
+                cells = [f"{topology} / {strategy}"]
+                for n in sizes:
+                    values = [
+                        r["auc_normalized"]
+                        for r in auc
+                        if r["topology"] == topology
+                        and r["n"] == n
+                        and r["strategy"] == strategy
+                        and r["auc_normalized"] is not None
+                    ]
+                    cells.append(
+                        f"{sum(values) / len(values):.4f}" if values else "n/a"
+                    )
+                rows_out.append(cells)
+        print(_render(rows_out, ["Topology / strategy", *header[1:]]))
+
+    if "figures" in stages:
+        started = time.perf_counter()
+        if args.write:
+            from .figures import write_figures
+
+            written.extend(write_figures(out_dir, analysis))
+        timings["figures"] = time.perf_counter() - started
+        print(f"\n  [figures] 3 SVG + 3 data CSV  ({timings['figures']:.2f}s)")
+
+    if args.write:
+        manifest = {
+            "generated_by": "python -m neuromesh.graphs.cli week4-analysis",
+            "track": "A",
+            "week": 4,
+            "grid": {
+                "topologies": list(topologies),
+                "sizes": [int(s) for s in sizes],
+                "seeds": [int(s) for s in seeds],
+            },
+            "stages": sorted(stages),
+            "max_removal_fraction": float(args.max_fraction),
+            # Wall-clock timings are deliberately NOT written here: they vary
+            # run to run, which would make the manifest the one output that is
+            # not byte-reproducible. They are printed to stdout instead.
+            "files": sorted(p.name for p in written),
+            "networkx_version": nx_version(),
+            "disclaimer": (
+                "Graph-only structural measurements. NOT agent communication "
+                "success, LLM response fidelity, or task accuracy."
+            ),
+        }
+        written.append(write_json(out_dir / "manifest.json", manifest))
+        print(f"\n  Wrote {len(written)} file(s) to {out_dir}")
+        for path in sorted(written, key=lambda p: p.name):
+            print(f"    {path.name}")
+    else:
+        print("\n  --no-write: nothing written to disk")
+
+    total = sum(timings.values())
+    print(f"\n  Total analysis time: {total:.2f}s")
+
+    if failures:
+        print("\nVALIDATION FAILURES:")
+        for failure in failures:
+            print(f"  - {failure}")
+        return 1
+    print("\nAll structural invariants held.")
+    return 0
+
+
 def cmd_yeo_derive(args: argparse.Namespace) -> int:
     """Aggregate a parcel-level connectome into the committed 7x7 matrix."""
     source_sha256 = {}
@@ -511,6 +756,60 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", default=None, help="also write the full results to this JSON file"
     )
     p_dia.set_defaults(func=cmd_diameters)
+
+    # Week 4: one primary command plus three focused aliases. All four share
+    # cmd_week4; the aliases only preset --only, so there is one code path and
+    # the stages cannot drift apart.
+    week4_specs = (
+        ("week4-analysis", None, "run the whole Week 4 analysis: tables + figures"),
+        (
+            "structural-analysis",
+            ["structural"],
+            "per-graph structural metrics + condition summaries",
+        ),
+        ("positional-covariates", ["positional"], "node-level positional covariates"),
+        ("robustness-curves", ["robustness"], "graph-only robustness curves + AUC"),
+    )
+    for name, preset, help_text in week4_specs:
+        parser_w4 = sub.add_parser(name, help=help_text)
+        parser_w4.add_argument(
+            "--out",
+            default=str(WEEK4_OUTPUT_DIR),
+            help=f"output directory (default: {WEEK4_OUTPUT_DIR})",
+        )
+        parser_w4.add_argument(
+            "--topologies", nargs="+", default=list(TOPOLOGIES), choices=list(TOPOLOGIES)
+        )
+        parser_w4.add_argument(
+            "--sizes", type=int, nargs="+", default=list(POPULATION_SIZES)
+        )
+        parser_w4.add_argument(
+            "--seeds", type=int, nargs="+", default=list(EXPERIMENT_SEEDS)
+        )
+        parser_w4.add_argument(
+            "--max-fraction",
+            type=float,
+            default=MAX_REMOVAL_FRACTION,
+            dest="max_fraction",
+            help=f"largest removal fraction measured (default: {MAX_REMOVAL_FRACTION})",
+        )
+        parser_w4.add_argument(
+            "--no-write",
+            action="store_false",
+            dest="write",
+            help="compute and validate without writing any file",
+        )
+        if preset is None:
+            parser_w4.add_argument(
+                "--only",
+                nargs="+",
+                default=None,
+                choices=list(_WEEK4_STAGES),
+                help="run only these stages (default: all)",
+            )
+        else:
+            parser_w4.set_defaults(only=preset)
+        parser_w4.set_defaults(func=cmd_week4)
 
     p_der = sub.add_parser(
         "yeo-derive",

@@ -2,11 +2,13 @@
 
 Modules: `src/neuromesh/graphs/`, `data/`, `configs/robustness.yaml`, `tests/integration/`.
 
-**Status: Week 3 complete — node removal (random and adaptive targeted), the
-end-to-end mock integration test, and the N = 112 diameter / round-budget
-analysis, on top of Week 2's five topologies, balanced role assignment,
-derived Yeo 7×7 matrix, validation and fixtures.**
-`structural_metrics` remains a placeholder for Week 4.
+**Status: Week 4 complete — structural metrics for all 25 conditions, node-level
+positional covariates, and graph-only robustness reference curves, on top of
+Week 3's node removal, mock integration test and diameter analysis, and
+Week 2's five topologies, balanced role assignment, derived Yeo 7×7 matrix,
+validation and fixtures.**
+**Every Track A entry point in `contracts.py` is now implemented** —
+`generate_graph`, `assign_roles`, `remove_nodes` and `structural_metrics`.
 
 | Setting | Value |
 |---|---|
@@ -40,6 +42,22 @@ derived Yeo 7×7 matrix, validation and fixtures.**
 - **Diameter / round-budget analysis** (`analysis.py`, `cli diameters`) —
   all 25 N = 112 conditions measured. **Headline: 10 rounds covers 23/25 and
   12 rounds covers 24/25; WS seed 4 has diameter 13.** §18.
+
+## Week 4 additions at a glance
+
+- **Structural metrics** (`metrics.py`) — 43 fields per graph over all 125
+  instances; `structural_metrics` in `contracts.py` is now implemented. §20.
+- **Positional covariates** (`metrics.positional_covariates`) — 22 fields per
+  node, 5,425 rows, including participation coefficient and within-module
+  z-score against the seven networks. §21.
+- **Graph-only robustness curves** (`curves.py`) — 250 trajectories, complete
+  over every integer removal count up to 30%, reusing the Week 3 engine. §22.
+- **Analysis datasets and figures** (`datasets.py`, `figures.py`,
+  `cli week4-analysis`) — 13 byte-reproducible outputs in ~12 s; figures are
+  dependency-free SVG. §23.
+- **Headline: under random failure topology barely matters (largest-component
+  fraction 0.659–0.682 at 30% removal); under targeted attack the families
+  separate by more than 10× (WS 0.329 vs BA 0.027).** §22.7.
 
 ---
 
@@ -1319,3 +1337,607 @@ section is the measurement and the recommendation; the decision is the team's.
 7. **Not done, deferred to Week 4:** `structural_metrics` remains a
    placeholder. Positional covariates, robustness curves and AUC analysis are
    Weeks 4-6 and were deliberately not started.
+
+---
+
+## 20. Structural metrics (Week 4)
+
+`src/neuromesh/graphs/metrics.py`. `structural_metrics` — the last Track A
+placeholder in `contracts.py` — is implemented. One row per graph, 43 fields.
+
+```python
+from neuromesh.graphs import structural_metrics
+metrics = structural_metrics(graph)        # the one-argument contract call
+```
+
+Identity (`topology`, `n`, `seed`) is read from `graph.graph` when not passed,
+so the contract's single-argument call identifies the graph by itself.
+
+### 20.1 What the contract asked for, and where it is
+
+| `contracts.py` wording | Key(s) |
+|---|---|
+| path length | `average_shortest_path_length`, `diameter`, `radius` |
+| clustering | `average_clustering`, `transitivity` |
+| modularity | `modularity_role_partition` |
+| max degree | `degree_max` (+ min/mean/variance/std/heterogeneity) |
+| input-readout distance | `input_readout_mean_distance`, `_min_`, `_max_` |
+| hub roles | `hub_role`, `hub_degree` |
+
+### 20.2 Definitions
+
+| Metric | Definition |
+|---|---|
+| `mean_degree` | 2E/N |
+| `edge_density` | 2E / (N(N−1)); `None` for N < 2 |
+| `average_clustering` | mean of the local coefficients (`nx.average_clustering`) |
+| `transitivity` | 3×triangles / triads — a **global** ratio, not the mean of local values, so it differs from `average_clustering`; both reported |
+| `average_shortest_path_length` | whole graph; `None` if disconnected |
+| `diameter`, `radius` | whole graph; `None` if disconnected |
+| `*_largest_component` | the same two on the largest component, under **separate names** |
+| `degree_variance` | **population** variance (ddof=0) |
+| `degree_heterogeneity` | ⟨k²⟩/⟨k⟩² — exactly 1.0 for a regular graph, dimensionless so it compares across degree-matched graphs |
+| `global_efficiency` | mean over ordered pairs of 1/d, with 1/d = 0 for an unreachable pair. **Defined for disconnected graphs**, which is why the robustness curves use it |
+| `degree_assortativity` | Pearson degree-degree correlation; `None` when undefined |
+| `modularity_role_partition` | Newman–Girvan Q of the **predefined** seven-network partition, resolution 1.0 |
+
+### 20.3 Undefined values are `None`, never 0.0
+
+Some quantities genuinely do not exist for some graphs. A disconnected graph
+has no finite diameter; a regular graph's degree correlation is 0/0. Returning
+0.0 would be a **false measurement** that silently pollutes every average
+taken over it, and 0.0 assortativity is a strong claim ("measured, and
+neutral") rather than an absence.
+
+So every such field is `None`, and `datasets.aggregate_conditions` reports a
+`*_n` count of valid observations beside each statistic. **A mean over 3 of 5
+seeds is never presented as a mean over 5.** This is not hypothetical: WS at
+N = 7 is a regular ring for one of the five seeds, so its assortativity is
+defined for 4/5 — visible in `condition_summaries.csv` as
+`degree_assortativity_n = 4`.
+
+### 20.4 Full-graph vs largest-component metrics are named apart
+
+`diameter` is `None` for a disconnected graph and
+`diameter_largest_component` carries the readable value. They are never
+substituted, because quoting a surviving component's diameter as the graph's
+diameter understates exactly the damage a robustness experiment measures.
+
+### 20.5 Modularity uses the predefined partition, NOT community detection
+
+The question is *"how modular is the link arrangement with respect to the
+seven functional networks the agents actually play"*, which has one answer per
+graph. Community **detection** would answer a different question — "what is
+the most modular partition available" — which is topology-dependent in a way
+that makes the five families incomparable, and which would score ER against a
+partition ER does not have.
+
+The same fixed partition is therefore applied to all five topologies. For the
+block models it coincides with the planted blocks by construction, so high
+values are expected; for ER/WS/BA the roles are a random labelling of
+structural positions, so values at or below zero are expected. **That contrast
+is the measurement** — and §24 explains why it must not be read as a pure
+topology effect.
+
+### 20.6 Measured results, N = 112, mean over 5 seeds
+
+| Topology | Clustering | Avg path | Efficiency | Modularity Q | Degree var | Heterogeneity |
+|---|---|---|---|---|---|---|
+| er | 0.0345 | 3.5349 | 0.3247 | −0.0145 | 3.364 | 1.210 |
+| ws | **0.3653** | **5.2169** | 0.2432 | 0.0096 | **0.400** | **1.025** |
+| ba | 0.1357 | 3.0366 | **0.3665** | −0.0133 | **16.514** | **2.032** |
+| modular | 0.0732 | 3.6011 | 0.3194 | **0.4821** | 3.118 | 1.195 |
+| yeo_sbm | 0.0440 | 3.5439 | 0.3239 | 0.1818 | 3.379 | 1.211 |
+
+Four things worth recording:
+
+1. **WS keeps high clustering at every scale** (0.35–0.38 from N = 14 up)
+   while the others decay toward 0 — the small-world signature, and the price
+   is the longest average path (5.22) and lowest efficiency (0.243).
+2. **BA has 4–40× the degree variance of any other topology** (16.5 vs
+   0.40–3.38) and the highest max degree (25.4 vs 5.8–9.2). This is the
+   structural feature that varies most across the families, and §22.9 reports
+   it as **associated** with the targeted-attack ordering. With only five
+   topologies no causal claim is testable from these data.
+3. **Modular reaches Q = 0.4821 at N = 28, 56 and 112 — identically.** The
+   fixed-edge-budget allocation (§12) splits within/between edges in the same
+   proportion at every scale, so Q is scale-invariant above the capacity cap.
+   At N = 14 it is only 0.107 and at N = 7 it is −0.151, which is the Week 2
+   finite-size limitation (§15.1–2) reappearing as a metric.
+4. **Yeo-SBM's Q (0.18) is far below modular's (0.48)** because the empirical
+   matrix sets *contrast*, not maximal separation (§13.4): real inter-network
+   structural connectivity is not a clean block diagonal.
+
+---
+
+## 21. Node-level positional covariates (Week 4)
+
+`metrics.positional_covariates(graph)` → one row per node, ascending node ID.
+**5,425 rows** over the study grid (5 topologies × 5 seeds × 217 nodes).
+
+```python
+from neuromesh.graphs import positional_covariates
+rows = positional_covariates(graph)        # 22 fields per node
+```
+
+### 21.1 Why node-level at all
+
+The study's outcome is measured *at specific agents*: information enters at
+`INPUT_ROLE` and is read out at `READOUT_ROLE`. Whether a readout agent landed
+on a hub or on a periphery node is a covariate a per-graph average cannot
+express — and without it a topology effect and a placement effect are not
+separable.
+
+### 21.2 Definitions
+
+| Covariate | Definition |
+|---|---|
+| `degree_centrality` | degree/(N−1); `None` for N < 2 |
+| `betweenness_centrality` | `nx.betweenness_centrality`, **normalised**, so values are in [0,1] and comparable across the five scales |
+| `closeness_centrality` | `nx.closeness_centrality` with `wf_improved=True` (Wasserman–Faust). Matters only for disconnected graphs; all 125 study graphs are connected, where it reduces to standard closeness |
+| `clustering` | local coefficient; 0 for degree < 2 (NetworkX convention) |
+| `core_number` | largest k whose k-core contains the node |
+| `eigenvector_centrality` | power iteration, **tol 1e-10, max_iter 2000** |
+| `pagerank` | **alpha 0.85, tol 1e-12, max_iter 1000** — fixed as module constants, not left to NetworkX's defaults, so the numbers survive a library upgrade |
+| `within_network_degree` | neighbours sharing the node's role |
+| `between_network_degree` | neighbours with a different role |
+| `n_neighbor_networks` | distinct roles among neighbours (0–7) |
+| `participation_coefficient` | `P_i = 1 − Σ_s (k_is/k_i)²` over the seven networks |
+| `within_module_z` | `z_i = (k_in,i − mean) / std` over same-role nodes, population std (ddof=0) |
+
+### 21.3 The three edge-case conventions, stated
+
+- **Degree-0 node, degree fractions → `None`.** 0/0 is not a fraction. 0.0
+  would read as "this node has no within-network links" when in truth it has
+  no links at all.
+- **Degree-0 node, participation → `0.0` by definition.** An isolated agent
+  participates in nothing. (Note this is a *different* choice from the
+  fractions above, deliberately: P has a defined value at zero degree, a
+  fraction does not.)
+- **Zero-variance module, z-score → `0.0`.** Every member is exactly at its
+  module's mean, so a deviation of 0 is the correct reading and the
+  alternative is a division by zero. This is the normal case at **N = 7**,
+  where each network holds one agent, so every z is exactly 0 there.
+
+`participation_coefficient` lies in **[0, 6/7]** for seven networks, never
+1.0 — a bound the tests assert over all 5,425 rows.
+
+**Eigenvector centrality is reported honestly.** The pure-Python power
+iteration is used deliberately: `nx.eigenvector_centrality_numpy` needs SciPy,
+which is **not** a declared project dependency, so it would work locally and
+fail in CI. On non-convergence **every** node's value becomes `None` — never a
+partial or unconverged number — and `metrics.eigenvector_status(graph)`
+reports which. Measured: it converged for all 125 study graphs.
+
+---
+
+## 22. Graph-only robustness reference curves (Week 4)
+
+`src/neuromesh/graphs/curves.py`. **250 trajectories** (125 graphs × 2
+strategies), **3,400 curve points**.
+
+### 22.1 This is a reference curve, not a result about the agent system
+
+It is computed from the adjacency alone. It is **not** agent communication
+success, **not** LLM response fidelity and **not** task accuracy. A network
+whose largest component survives intact may still fail every task, and a
+fragmented network may still score well on a task needing only local
+information. Week 6 measures the latter; this measures the structural ceiling
+those runs operate under, so a Week 6 score drop can be checked against how
+much connectivity was actually lost.
+
+### 22.2 Reuse, not reimplementation
+
+Every removal order comes from Week 3's `robustness.py`:
+`random_removal_order` and `targeted_removal_order`. The adaptive attack, the
+`smallest_id` tie-break, the salted isolated RNG and the `floor` rounding rule
+are inherited unchanged. **No removal logic is duplicated and no new rounding
+rule is introduced** — tests assert the trajectory's order is character-for-
+character the Week 3 order.
+
+### 22.3 Complete curves, cheaply, via the nesting property
+
+Week 3 established that both orders **nest**: the first k entries of a longer
+order are exactly the shorter order. So the order is computed **once** at
+k_max and evaluated on each prefix. This is not an approximation — the prefix
+of the adaptive attack *is* the shorter adaptive attack — and it is what makes
+measuring **every integer removal count** from 0 to `floor(0.30N)` affordable
+rather than only three checkpoints.
+
+Points per graph: N = 7 → 3, 14 → 5, 28 → 9, 56 → 17, 112 → 34.
+
+### 22.4 The denominator is the ORIGINAL N
+
+`largest_component_fraction` and `fraction_removed` both divide by the
+**original** node count. This matters: a graph reduced to 2 joined nodes has a
+largest component holding 100% of its *survivors* but 1.8% of the *original*
+network. Survivor-normalising would make total collapse look like perfect
+robustness and would make curves at different N incomparable.
+
+### 22.5 Efficiency under both normalisations
+
+- `global_efficiency` — `nx.global_efficiency` of the surviving graph,
+  normalised over **surviving** pairs. The standard definition.
+- `global_efficiency_original_n` — the same pair sum renormalised over the
+  **original** N, so removed agents count as unreachable.
+
+The first asks "how efficiently do the survivors communicate among
+themselves"; the second asks "how much of the original network's capacity is
+left". They diverge sharply: under random failure at N = 112, BA's survivor
+efficiency barely moves (0.371 → ~0.36) while its original-N efficiency falls
+0.371 → 0.177. Quoting one as the other would misstate the damage, so both are
+exported.
+
+### 22.6 Checkpoints
+
+0%, 10%, 20%, 30%, flagged **within** the complete curve rather than measured
+separately, so a checkpoint value and the curve can never disagree. Both the
+`requested_fraction` and the realised `k_removed` / `fraction_removed` are
+recorded.
+
+At N = 112 the levels are k = 0, 11, 22, 33 → realised 0%, 9.82%, 19.64%,
+29.46%. **Quote the realised fraction.**
+
+**N = 7 boundary artefact:** `floor(0.1 × 7) = 0`, so at N = 7 the 10%
+checkpoint *is* the 0% checkpoint and only three distinct checkpoints exist.
+Asserted by a test so it is not rediscovered later.
+
+### 22.7 Measured results — N = 112, 30% removed, mean over 5 seeds
+
+| Topology | Random: LCC frac | Random: components | Targeted: LCC frac | Targeted: components |
+|---|---|---|---|---|
+| er | 0.668 | 4.8 | 0.120 | 27.6 |
+| ws | 0.659 | 3.0 | **0.329** | **7.2** |
+| ba | 0.682 | 3.6 | **0.027** | **59.8** |
+| modular | 0.679 | 4.0 | 0.191 | 27.4 |
+| yeo_sbm | 0.675 | 3.8 | 0.163 | 25.0 |
+
+**Under random failure, topology barely matters** — every family retains
+66–68% of the original network in one component, and the spread (0.023) is
+smaller than the across-seed spread. **Under targeted attack the families
+separate by more than an order of magnitude**, from WS at 0.329 down to BA at
+0.027.
+
+### 22.8 Structural AUC — a Week 4 descriptive reference only
+
+**The principal robustness AUC comparison is Week 6 work over LLM task
+scores.** The AUC here is graph-only and the two must never be pooled.
+
+| Field | Definition |
+|---|---|
+| x axis | `fraction_removed` = k / original N, from 0 to k_max/N (≈0.2946 at N = 112, below 0.30 because node counts are integers) |
+| y axis | `largest_component_fraction` (denominator: original N) |
+| integration | trapezoidal rule over **measured points only** — no interpolation past the last point, no extrapolation |
+| normalisation | `auc_raw / (x_max − x_min)`, i.e. the **mean y over the removal range**. This is what makes values comparable across N, whose `x_max` differ through integer rounding. Raw values at different N are **not** comparable. **1.0 is NOT attainable** — see below |
+
+**The attainable ceiling is `1 − x_max/2`, not 1.0.** Because y is normalised
+by the **original** N, deleting a node lowers y even when nothing fragments: a
+graph that stays fully connected still has `y = 1 − k/N` at step k, and the
+mean of that straight line over `[0, x_max]` is `1 − x_max/2`. That gives
+
+| x_max | Applies to | Ceiling |
+|---|---|---|
+| 2/7 = 0.285714 | N = 7, 14, 28, 56 | **0.857143** |
+| 33/112 = 0.294643 | N = 112 | **0.852679** |
+
+Reaching 1.0 would require the largest component to still hold all N original
+nodes after k of them were deleted, which is impossible. **Read a measured AUC
+against the ceiling, not against 1.0.** At N = 112, BA's random-failure AUC of
+0.8458 sits within 0.007 of the 0.852679 ceiling — i.e. almost no
+fragmentation beyond the unavoidable loss of the removed nodes themselves —
+while its targeted AUC of 0.3993 indicates severe fragmentation.
+
+**0.0 is likewise a theoretical lower reference, not an attainable result**
+under this experiment. The input graphs are connected by generator contract,
+so `y(0) = 1.0` exactly; and removal stops at `floor(0.30N)`, so at least
+0.70N nodes survive and any survivor is itself a component, giving
+`y(k) >= 1/N > 0`. The absolute floor (instant collapse to one node) is about
+0.3571 at N = 7, 0.1875 at N = 14, 0.0960 at N = 28, 0.0485 at N = 56 and
+0.0239 at N = 112. The lowest value observed anywhere in the sweep is 0.3544
+(BA, N = 112, seed 0, targeted).
+
+This also explains why **all 25 measured N = 7 random trajectories pin at
+0.8571**: none of them fragmented at any step (0 of 75 curve points had a
+largest component smaller than N − k), so each curve sat exactly on its
+ceiling. That is an **observed property of these 25 graphs and seeded draws,
+not a theorem about 7-node mean-degree-4 graphs** — such graphs *can* be
+fragmented by deleting two nodes, and within this very dataset 12 of the 25
+N = 7 **targeted** trajectories do fall below the ceiling (range
+0.7857–0.8571). The practical consequence stands either way: at N = 7 the
+random-removal AUC has almost no room to vary, so **N = 7 discriminates
+nothing** in the robustness comparison.
+
+Measured normalised AUC at N = 112 (mean over 5 seeds, min–max):
+
+| Topology | Random | Targeted |
+|---|---|---|
+| er | 0.8327 (0.823–0.841) | 0.7051 (0.659–0.750) |
+| ws | 0.8396 (0.819–0.848) | **0.7760** (0.746–0.814) |
+| ba | 0.8458 (0.833–0.853) | **0.3993** (0.354–0.431) |
+| modular | 0.8421 (0.836–0.848) | 0.7180 (0.690–0.739) |
+| yeo_sbm | 0.8394 (0.828–0.853) | 0.7240 (0.700–0.757) |
+
+### 22.9 An observed association, and a trade-off the team should know about
+
+Targeted-attack AUC is **associated** with degree heterogeneity across the
+five families. The table below reports that association; it is not a fitted
+model and no hypothesis test was performed.
+
+| Topology | Degree variance | Heterogeneity ⟨k²⟩/⟨k⟩² | Max degree | Targeted AUC |
+|---|---|---|---|---|
+| ws | 0.400 | 1.025 | 5.8 | 0.7760 |
+| modular | 3.118 | 1.195 | 8.6 | 0.7180 |
+| er | 3.364 | 1.210 | 8.8 | 0.7051 |
+| yeo_sbm | 3.379 | 1.211 | 9.2 | 0.7240 |
+| ba | 16.514 | 2.032 | 25.4 | 0.3993 |
+
+Three statements, separated by how well the data support them:
+
+**(a) OBSERVED, and robust to seed choice.** WS has the highest targeted AUC
+(0.7760) and BA the lowest (0.3993), and their across-seed ranges
+(0.7461–0.8137 and 0.3544–0.4309) do not overlap or come close to
+overlapping. The same two extremes also hold the lowest and highest degree
+heterogeneity (1.025 and 2.032). This ordering is a direct measurement.
+
+**(b) NOT SEPARATED BY THESE DATA.** The three middle families sit within
+0.019 of one another (modular 0.7180, yeo_sbm 0.7240, er 0.7051) with
+across-seed ranges that overlap heavily (0.6899–0.7390, 0.6995–0.7574,
+0.6594–0.7503). Five seeds per condition do not order them. **No
+significance test was performed and none is claimed** — the ranges are
+reported so a reader can see the overlap directly. Note too that er and
+yeo_sbm have almost identical heterogeneity (1.210 vs 1.211) but AUCs 0.019
+apart, which is itself a sign that heterogeneity alone does not determine the
+outcome at this resolution.
+
+**(c) INTERPRETATION, consistent with (a) but not demonstrated here.** The
+standard network-science account of (a) is that a near-regular graph offers an
+attacker no high-degree target, while a hub-dominated graph loses
+disproportionate connectivity when its hubs go first — the *robust-yet-fragile*
+property of scale-free graphs. That account is consistent with every number in
+the table, and BA's behaviour matches it closely (removing 11 nodes, 10%,
+already drops its largest component to 34.8%). But this study measured five
+topologies, not a controlled sweep of heterogeneity at fixed topology, so the
+mechanism is **imported from the literature as an explanation, not established
+by this measurement.** Establishing it would need heterogeneity varied
+deliberately with other structure held fixed.
+
+The trade-off below rests only on (a):
+
+> **WS has the worst round-budget behaviour (§18: the only topology exceeding
+> 10 or 12 rounds, diameter up to 13) but the best targeted-attack robustness
+> (AUC 0.776, 7.2 components vs BA's 59.8). BA is the reverse: the shortest
+> paths (diameter 5–6) and the most fragile structure.**
+
+Neither is "better". Reporting them together is the honest read, and it is a
+more interesting result than either alone.
+
+---
+
+## 23. Week 4 outputs, figures and how to regenerate them
+
+### 23.1 One command
+
+```bash
+python -m neuromesh.graphs.cli week4-analysis
+```
+
+Deterministic, offline, no downloads; `yeo_sbm` reads the committed empirical
+matrix. **All 13 output files are byte-reproducible** across runs (verified by
+SHA-256). Measured runtime: **~12 s** total (structural 1.0 s, positional
+2.1 s, robustness 9.0 s, figures 0.05 s).
+
+Focused subsets, and configuration:
+
+```bash
+python -m neuromesh.graphs.cli structural-analysis      # 125 rows + 25 summaries
+python -m neuromesh.graphs.cli positional-covariates    # 5425 node rows
+python -m neuromesh.graphs.cli robustness-curves        # 250 trajectories + AUC
+python -m neuromesh.graphs.cli week4-analysis --only structural robustness
+python -m neuromesh.graphs.cli week4-analysis --out /tmp/w4 --sizes 28 112
+python -m neuromesh.graphs.cli week4-analysis --no-write   # validate only
+```
+
+Exit code 1 means a **structural invariant failed** — a disconnected original
+graph, an unbalanced role assignment, a wrong row count, a mean degree that is
+not 4, a curve not starting at k = 0, or a largest component that grew. The
+command validates as it goes rather than only writing.
+
+Equivalent Python: `neuromesh.graphs.run_week4_analysis(out_dir, ...)`.
+
+### 23.2 Outputs — `data/analysis/week4/` (2.2 MB, 13 files)
+
+| File | Rows |
+|---|---|
+| `structural_metrics.csv` | 125 |
+| `condition_summaries.csv` | 25 |
+| `positional_covariates.csv` | 5,425 |
+| `robustness_curves.csv` | 3,400 |
+| `robustness_checkpoints.csv` | 950 |
+| `robustness_auc.csv` | 250 |
+| `figure{1,2,3}_*.svg` | 3 figures |
+| `figure_data_{1,2,3}_*.csv` | 100 / 340 / 600 |
+| `manifest.json` | grid, conventions, file list, disclaimer |
+
+Determinism rests on three things: fixed iteration order (topology, size,
+seed, node — no dict order reaches the output); fixed column tuples; and
+**`repr` float formatting**, the shortest string that reads back as the
+identical double. `f"{x:.6f}"` was rejected — it silently discards precision,
+so a table written and re-read would no longer reproduce its source metric.
+CSV `None` is the empty field; JSON `None` is `null`. Line endings are forced
+to `\n` so files are identical on Windows and Linux.
+
+Wall-clock timings are deliberately **not** written into `manifest.json`: they
+vary per run, which would make the manifest the one non-reproducible output.
+They are printed to stdout instead.
+
+### 23.3 Figures are hand-written SVG, and why
+
+**`matplotlib` is NOT a declared project dependency.** `pyproject.toml` lists
+`networkx numpy pandas pyarrow pydantic pyyaml` plus dev `pytest pytest-cov
+ruff`, and that file is Track D's under `.github/CODEOWNERS`. matplotlib
+*happens* to be installed on this development machine, which makes it a trap:
+a figure script importing it would work locally and fail in CI, whose install
+is exactly `pip install -e ".[dev]"`.
+
+Rather than edit a teammate's file or ship a step that runs on one laptop, the
+figures are emitted as SVG from the standard library alone. Side benefits: SVG
+is text, so figures diff in review; they are byte-reproducible, so the
+determinism tests cover them; and they need no display, backend or font cache
+in CI. A test asserts `figures.py` contains no matplotlib/plotly/seaborn
+import.
+
+**Every figure also writes its exact plotted values** as `figure_data_*.csv`,
+so anyone preferring matplotlib, R or a spreadsheet can reproduce them without
+re-running the analysis.
+
+| Figure | Content |
+|---|---|
+| **1** | 4 panels — clustering, average path length, global efficiency, predefined-partition modularity — against N (log₂ spacing), one line per topology, ±1 SD error bars |
+| **2** | Largest-component fraction vs fraction removed, random and targeted panels, 5 topologies, N = 112 seed 0 |
+| **3** | Mean LCC fraction with ±1 SD bands across 5 seeds, panels for N = 28/56/112, solid = random, dashed = targeted |
+
+Honesty rules applied to all three: straight segments join **measured points
+only** (no smoothing, no spline, nothing drawn past the last point); error bars
+are ±1 **sample** SD (ddof=1) with the seed count printed on the figure; a
+metric undefined for a condition is **omitted** rather than drawn as zero;
+fraction axes start at zero; and each figure states on its face that it is
+graph-only with no LLM or task claim.
+
+Figures 2 and 3 pick their cell and panels from the data actually present
+(largest N, smallest seed; three largest sizes) rather than hard-coding
+112/0 — a fixed default silently produced an **empty** figure on a reduced
+grid, and a figure that looks finished and shows nothing is worse than an
+error.
+
+### 23.4 Two standard-deviation conventions, both stated
+
+- **Within a graph**, `degree_variance` / `degree_std` are the **population**
+  values (ddof=0): a graph's degree sequence is the whole population of its
+  nodes.
+- **Across the five seeds**, `condition_summaries.csv` uses the **sample**
+  standard deviation (ddof=1): five seeds are a sample from the generator's
+  ensemble and the claim is about the topology, not those five graphs.
+
+They answer different questions and are not interchangeable.
+
+---
+
+## 24. Role-placement confounding — the Week 4 measurement
+
+§14.1 raised this as an interpretation warning. Week 4 **measured** it. The
+three questions the Week 4 brief asks, answered empirically:
+
+### 24.1 Is the node→role mapping identical across families at fixed (N, seed)?
+
+**Within a group, yes. Across the two groups, no.** Measured at N = 28, seeds
+0–2:
+
+| Comparison | Identical mapping? |
+|---|---|
+| er vs ws vs ba | **Yes** — all three share one randomised mapping per seed |
+| modular vs yeo_sbm | **Yes** — both read role off the community index |
+| {er,ws,ba} vs {modular,yeo_sbm} | **No** |
+
+### 24.2 Does the mapping vary across seeds?
+
+| Family | Distinct mappings over seeds 0–4 | Regime | Seed-dependent |
+|---|---|---|---|
+| er, ws, ba | **5** | `randomised_balanced` | yes |
+| modular, yeo_sbm | **1** | `community` | **no** |
+
+### 24.3 Is block role placement locked to community structure?
+
+**Completely.** For `modular` and `yeo_sbm`, `role == YEO7[community]` for
+**every node of every graph** — verified across the grid. ER/WS/BA carry no
+`community` attribute at all.
+
+### 24.4 Which comparisons are confounded, and by how much
+
+| Comparison | Clean read on topology? |
+|---|---|
+| ER vs WS vs BA | **Yes** — same regime, placement averaged over seeds |
+| modular vs Yeo-SBM | **Yes** — same regime, placement fixed by blocks |
+| ER/WS/BA vs modular/Yeo-SBM | **No** — topology and placement regime vary together |
+
+The magnitude is now quantified rather than asserted. Predefined-partition
+modularity at N = 112: **modular 0.482 and Yeo-SBM 0.182, against ER −0.015,
+WS 0.010 and BA −0.013.** That gap is *largely definitional*: for the block
+models the partition being scored IS the planted structure, while for the
+others it is a random labelling. A reader who took "modular is 30× more
+modular than ER" as a topology effect would be reading the role-assignment
+regime, not the link arrangement.
+
+Two further consequences, both measured:
+
+- **Variance is not comparable across the boundary.** Block topologies'
+  seed-to-seed spread reflects link placement only; ER/WS/BA spread reflects
+  link placement **and** role placement. Visible in the data: modular's
+  modularity SD is 0.0000 at N = 28/56/112 (placement fixed, and the
+  edge-budget split is scale-invariant) while ER's is nonzero at every scale.
+  Error bars from the two families are not measuring the same thing.
+- **Within-network degree differs structurally too**, not only by label: the
+  block models concentrate more links inside networks, which is asserted by a
+  test over the full grid.
+
+### 24.5 What was NOT done, and what is proposed
+
+**Week 2 role assignment was not altered.** `roles.assign_roles` is untouched;
+Week 4 only measured and exported. Changing it would be a scientific change to
+a merged interface and is a team decision, not a Track A implementation
+choice.
+
+**Proposed controlled sensitivity analysis, for team approval:** add one extra
+condition — a block topology (`modular` or `yeo_sbm`) run with **deliberately
+shuffled role labels**, i.e. balanced roles assigned by the `randomised_
+balanced` regime instead of read off the communities. That breaks
+role–community alignment while keeping the link arrangement identical, so the
+difference between it and the standard block condition isolates the placement
+effect from the topology effect. It needs no new generator — only an optional
+flag on `assign_roles` to force the randomised regime on a graph that carries
+communities.
+
+Cost estimate: one extra flag, 5 seeds × 5 sizes × 1 topology = 25 extra graph
+conditions for the graph-only analysis, and (if the team wants it in the LLM
+sweep) a proportional increase in runs. **Raised as a Week 5/6 design question
+and not implemented.**
+
+---
+
+## 25. Week 4 limitations and follow-ups
+
+1. **Graph-only, throughout.** Nothing in §20–§23 measures agent behaviour,
+   message fidelity, consensus or task accuracy. The robustness curves are a
+   structural reference for Week 6, not a substitute for it.
+2. **The structural AUC is descriptive and is not the Week 6 AUC.** Different
+   y axis (connectivity, not task score), different purpose. Do not pool them.
+3. **Five seeds is few for the middle of the AUC ordering.** WS vs BA is
+   unambiguous; ER vs modular vs Yeo-SBM under targeted attack (0.705/0.718/
+   0.724) is **not resolved** and should not be claimed. WS's N = 112 diameter
+   SD of 1.52 (§18) is the same caution in another metric.
+4. **Realised removal fractions are 9.82/19.64/29.46%**, not 10/20/30%, under
+   the inherited `floor` rule. Quote the realised value.
+5. **N = 7 remains a boundary case in new ways:** the 10% checkpoint collapses
+   into 0%; every within-module z-score is exactly 0 (one agent per network);
+   modular carries no community structure so its Q is negative; and Yeo-SBM is
+   fully determined, so its clustering SD across seeds is exactly 0.0000.
+6. **Role-placement confound is measured but not controlled** (§24). The
+   sensitivity condition is proposed, not implemented.
+7. **Still open from Weeks 1–3, unchanged:** fixed-edge-budget block sampling
+   (§12); the Yeo block means mixing strength and density (§13.1); the
+   unpublished ENIGMA subject count (§15.4); `load_graph()` and now
+   `DEFAULT_OUTPUT_DIR` resolving relative to the working directory (§15.6);
+   fixtures shipped at seed 0 only; and the unresolved 10-vs-12-vs-13 round
+   budget (§18) — **not touched in Week 4.**
+8. **`data/analysis/week4/` is 2.2 MB of generated CSV** and is **not** in
+   `.gitignore`. It is deterministic and regenerable in 12 s from one command,
+   so whether to commit it or treat it as a build artefact is a team call —
+   flagged for Track D, who own `.gitignore`. Track A's view: commit it, so
+   the progress report's numbers are reviewable without running anything.
+9. **Coverage instrumentation makes the suite ~4× slower** (42 s plain vs
+   191 s under `--cov`), because the heavy numeric loops are interpreted
+   per-line. The three full-grid builds are session-scoped fixtures so each is
+   computed once, but this is worth knowing before adding more full-grid
+   tests.
+10. **Deferred by design:** Week 5 robustness configuration and dry runs, and
+    Week 6 random-vs-targeted LLM experiments with task-score AUC. Not
+    started.

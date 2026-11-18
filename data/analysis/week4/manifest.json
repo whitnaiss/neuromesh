@@ -1,0 +1,51 @@
+{
+  "disclaimer": "Graph-only structural measurements. NOT agent communication success, LLM response fidelity, or task accuracy.",
+  "files": [
+    "condition_summaries.csv",
+    "figure1_structural_metrics.svg",
+    "figure2_robustness_curves.svg",
+    "figure3_robustness_by_topology.svg",
+    "figure_data_1_structural_metrics.csv",
+    "figure_data_2_robustness_curves.csv",
+    "figure_data_3_robustness_by_topology.csv",
+    "positional_covariates.csv",
+    "robustness_auc.csv",
+    "robustness_checkpoints.csv",
+    "robustness_curves.csv",
+    "structural_metrics.csv"
+  ],
+  "generated_by": "python -m neuromesh.graphs.cli week4-analysis",
+  "grid": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "sizes": [
+      7,
+      14,
+      28,
+      56,
+      112
+    ],
+    "topologies": [
+      "er",
+      "ws",
+      "ba",
+      "modular",
+      "yeo_sbm"
+    ]
+  },
+  "max_removal_fraction": 0.3,
+  "networkx_version": "3.6.1",
+  "stages": [
+    "figures",
+    "positional",
+    "robustness",
+    "structural"
+  ],
+  "track": "A",
+  "week": 4
+}
