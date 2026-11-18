@@ -6,12 +6,21 @@ Usage
     python -m neuromesh.graphs.cli fixtures          # write the fixture set
     python -m neuromesh.graphs.cli validate          # print validation tables
     python -m neuromesh.graphs.cli verify-fixtures   # reload and re-check files
+    python -m neuromesh.graphs.cli diameters         # N=112 diameters, 10 vs 12 rounds
 
 ``validate`` prints two tables: the 15 canonical rows (the three topologies
 at the five population sizes, using the default generator settings
 that produce the shipped fixtures), and a diagnostics table for the
 non-default variants (ER under G(n,p) and standard BA) so their known
 deviations stay visible rather than hidden behind the defaults.
+
+``diameters`` measures shortest-path structure for every (topology, seed)
+condition at one population size and reports which conditions fit inside a
+given round budget. Exit code 1 means an *execution* problem -- a generated
+graph that breached the connectivity contract, or a fixture whose diameter
+disagrees with the regenerated graph. A diameter that exceeds the round budget
+is a **finding, not an error**, and does not change the exit code: the point of
+the command is to report it.
 """
 
 from __future__ import annotations
@@ -22,9 +31,21 @@ import json
 import sys
 from pathlib import Path
 
+from .analysis import (
+    DEFAULT_ROUND_BUDGETS,
+    STD_CONVENTION,
+    aggregate_path_metrics,
+    diameter_table,
+    measure_graph,
+    render_aggregate_table,
+    render_measurement_table,
+    round_budget_assessment,
+)
 from .fixtures import (
     DEFAULT_FIXTURE_DIR,
+    fixture_filename,
     generate_fixture_set,
+    load_fixture,
     load_fixture_set,
 )
 from .generators import (
@@ -37,8 +58,10 @@ from .generators import (
 )
 from .spec import (
     DEFAULT_FIXTURE_SEED,
+    EXPERIMENT_SEEDS,
     POPULATION_SIZES,
     TARGET_MEAN_DEGREE,
+    TOPOLOGIES,
     GraphSpec,
 )
 from .validation import check_reproducible, validate_graph
@@ -241,6 +264,139 @@ def cmd_verify_fixtures(args: argparse.Namespace) -> int:
     return 0 if failures == 0 else 1
 
 
+def cmd_diameters(args: argparse.Namespace) -> int:
+    """Measure diameters for every (topology, seed) at one N; assess the budget.
+
+    Deterministic, offline and fixture-free: graphs come from the public
+    ``generate_graph`` at its default settings, so the rows describe exactly
+    the graphs the experiment will run. ``--check-fixtures`` additionally
+    reloads the committed seed-0 fixtures and asserts their diameters agree
+    with the regenerated graphs, which catches a generator change that a
+    fixture file no longer matches.
+    """
+    n = args.n
+    seeds = tuple(args.seeds)
+    budgets = tuple(args.rounds)
+    failures: list[str] = []
+
+    rows = diameter_table(n, seeds=seeds, round_budgets=budgets)
+
+    print(f"\n### Shortest-path structure at N = {n}  (seeds {list(seeds)})\n")
+    print(render_measurement_table(rows, budgets))
+    print(f"\n{len(rows)} configurations measured "
+          f"({len(TOPOLOGIES)} topologies x {len(seeds)} seeds).")
+
+    # Every generated graph must satisfy the connectivity contract. A breach is
+    # an execution failure, reported rather than concealed.
+    for row in rows:
+        if not row["connected"]:
+            failures.append(
+                f"{row['topology']} N={row['n']} seed={row['seed']} is "
+                f"disconnected ({row['n_components']} components): the "
+                "generator connectivity contract is breached"
+            )
+
+    aggregates = aggregate_path_metrics(rows, budgets)
+    print(f"\n### Per-topology aggregate  (std dev: {STD_CONVENTION})\n")
+    print(render_aggregate_table(aggregates, budgets))
+
+    assessment = round_budget_assessment(rows, budgets)
+    print("\n### Round budget\n")
+    for budget in budgets:
+        entry = assessment["budgets"][budget]
+        verdict = "covers all measured" if entry["covers_all_measured"] else "INSUFFICIENT"
+        print(
+            f"  {budget:>3} rounds: {entry['n_within']}/{entry['n_conditions']} "
+            f"conditions have diameter <= {budget}  [{verdict}]"
+        )
+        for violation in entry["violations"]:
+            print(
+                f"            exceeded by {violation['topology']} "
+                f"seed={violation['seed']} (diameter {violation['diameter']})"
+            )
+    print(
+        f"\n  Largest measured diameter: {assessment['max_diameter']} at "
+        + ", ".join(
+            f"{a['topology']} seed={a['seed']}" for a in assessment["argmax"]
+        )
+    )
+    print(
+        "  Smallest budget covering every measured condition: "
+        f"{assessment['minimum_budget_covering_all_measured']} rounds."
+    )
+    print("\n  " + assessment["interpretation"])
+
+    if args.check_fixtures:
+        print("\n### Fixture cross-check (committed seed-0 graphs)\n")
+        for topology in TOPOLOGIES:
+            path = Path(args.fixture_dir) / fixture_filename(topology, n, 0)
+            if not path.is_file():
+                print(f"  [SKIP] {topology}: no fixture at {path}")
+                continue
+            graph, _ = load_fixture(path)
+            measured = measure_graph(
+                graph,
+                topology=topology,
+                n=n,
+                seed=0,
+                source="fixture",
+                round_budgets=budgets,
+            )
+            generated = next(
+                r for r in rows if r["topology"] == topology and r["seed"] == 0
+            )
+            agree = (
+                measured["diameter"] == generated["diameter"]
+                and measured["n_edges"] == generated["n_edges"]
+            )
+            status = "OK" if agree else "MISMATCH"
+            print(
+                f"  [{status}] {topology}: fixture diameter "
+                f"{measured['diameter']} / regenerated {generated['diameter']}, "
+                f"edges {measured['n_edges']} / {generated['n_edges']}"
+            )
+            if not agree:
+                failures.append(
+                    f"{topology} N={n} seed=0: committed fixture disagrees with "
+                    "the regenerated graph"
+                )
+
+    if args.json:
+        payload = {
+            "n": n,
+            "seeds": list(seeds),
+            "round_budgets": list(budgets),
+            "std_convention": STD_CONVENTION,
+            "rows": [
+                {k: v for k, v in row.items() if k != "round_check"}
+                | {"round_check": {str(b): row["round_check"][b] for b in budgets}}
+                for row in rows
+            ],
+            "aggregates": aggregates,
+            "assessment": assessment,
+            "networkx_version": nx_version(),
+        }
+        out = Path(args.json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(f"\nWrote {out}")
+
+    if failures:
+        print("\nEXECUTION FAILURES:")
+        for failure in failures:
+            print(f"  - {failure}")
+        return 1
+    return 0
+
+
+def nx_version() -> str:
+    import networkx
+
+    return networkx.__version__
+
+
 def cmd_yeo_derive(args: argparse.Namespace) -> int:
     """Aggregate a parcel-level connectome into the committed 7x7 matrix."""
     source_sha256 = {}
@@ -320,6 +476,41 @@ def build_parser() -> argparse.ArgumentParser:
     p_ver = sub.add_parser("verify-fixtures", help="reload and revalidate fixtures")
     p_ver.add_argument("--out", default=str(DEFAULT_FIXTURE_DIR))
     p_ver.set_defaults(func=cmd_verify_fixtures)
+
+    p_dia = sub.add_parser(
+        "diameters",
+        help="measure diameters at one N and assess the communication-round budget",
+    )
+    p_dia.add_argument(
+        "--n",
+        type=int,
+        default=112,
+        help="population size to measure (default: 112, the largest scale)",
+    )
+    p_dia.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(EXPERIMENT_SEEDS),
+        help="seeds to measure (default: the study's 0 1 2 3 4)",
+    )
+    p_dia.add_argument(
+        "--rounds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_ROUND_BUDGETS),
+        help="round budgets to check (default: 10 12)",
+    )
+    p_dia.add_argument(
+        "--check-fixtures",
+        action="store_true",
+        help="also verify the committed seed-0 fixtures give the same diameters",
+    )
+    p_dia.add_argument("--fixture-dir", default=str(DEFAULT_FIXTURE_DIR))
+    p_dia.add_argument(
+        "--json", default=None, help="also write the full results to this JSON file"
+    )
+    p_dia.set_defaults(func=cmd_diameters)
 
     p_der = sub.add_parser(
         "yeo-derive",
