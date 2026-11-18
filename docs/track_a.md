@@ -2,18 +2,30 @@
 
 Modules: `src/neuromesh/graphs/`, `data/`, `configs/robustness.yaml`, `tests/integration/`.
 
-**Status: Week 1 complete — ER, WS and BA generators, validation, fixtures.**
-`modular` and `yeo_sbm` are Week 2 and raise `NotImplementedError`.
-`assign_roles`, `remove_nodes` and `structural_metrics` are still placeholders.
+**Status: Week 2 complete — all five topologies, balanced role assignment,
+the derived Yeo 7×7 matrix, validation and fixtures.**
+`remove_nodes` and `structural_metrics` remain placeholders for later weeks.
 
 | Setting | Value |
 |---|---|
 | Population sizes (N) | 7, 14, 28, 56, 112 |
-| Topologies implemented | `er`, `ws`, `ba` |
-| Topologies planned (Week 2) | `modular`, `yeo_sbm` |
+| Topologies implemented | `er`, `ws`, `ba`, `modular`, `yeo_sbm` |
 | Target mean degree | 4, matched **exactly** at every scale |
 | Seeds | 0, 1, 2, 3, 4 (fixtures shipped at seed 0) |
+| Roles | seven Yeo networks, exactly N/7 agents each |
 | Boundary case | N = 7; topology comparisons start at N = 14 |
+
+## Week 2 additions at a glance
+
+- **Modular** (`generators.modular`) — planted partition over seven equal
+  blocks, within/between preference ratio 10 by default. §12.
+- **Yeo-SBM** (`generators.yeo_sbm`) — the same machinery driven by an
+  empirically derived 7×7 inter-network structural matrix. §13.
+- **Role assignment** (`roles.assign_roles`) — exactly N/7 agents per Yeo
+  network; randomised for ER/WS/BA, read off the blocks for the two block
+  models. §14.
+- **Derived matrix** (`data/yeo/yeo7x7_sc.json`) — aggregated from the ENIGMA
+  Toolbox HCP group-average Schaefer-200 structural connectome. §13.1.
 
 ---
 
@@ -495,3 +507,278 @@ changed, and `DEFAULT_ROUNDS` in `contracts.py` is Andrew's to set.
    than done — the whole study runs at k = 4.
 9. The end-to-end integration test (`tests/integration/`) is a Week 3 Track A
    task and is not written yet.
+
+---
+
+## 12. Modular topology (Week 2)
+
+A planted partition over seven equal blocks of N/7 agents. Every within-block
+node pair carries the same preference and every between-block pair the same,
+lower one, so the only structure present is community membership itself —
+which is what the proposal's "modular network with uniform links between
+modules" asks for.
+
+| Parameter | Value | Why |
+|---|---|---|
+| blocks | 7, equal | One per Yeo functional network |
+| `within_between_ratio` | 10.0 | Strong but not extreme preference; recorded in `params`, never changed silently |
+| edge budget | `E = 2N`, exact | Mean degree is the controlled variable |
+| `ensure_connected` | `True` | Rejection sampling, draws recorded |
+
+### Why a fixed edge budget rather than independent Bernoulli trials
+
+A textbook SBM draws each node pair independently, so mean degree is matched
+only *in expectation* — the same defect that ruled out `G(N, p)` for ER. The
+total is therefore fixed at `E = round(kN/2)` and divided among the 28 block
+pairs in proportion to `weight x capacity`, then drawn uniformly without
+replacement inside each pair. **Mean degree is exactly 4 at every N and every
+seed**, while the relative block preferences are preserved.
+
+This conditions the ensemble, exactly as connectivity rejection does for ER,
+and the conditioning is recorded rather than hidden (`n_within_edges`,
+`n_between_edges`, `capacity_clamped`, `attempts`).
+
+### Realised structure (seed 0, measured)
+
+| N | within edges | between | within % | modularity Q | structure |
+|---|---|---|---|---|---|
+| 7 | 0 | 14 | 0% | −0.148 | **none possible** |
+| 14 | 7 | 21 | 25% | +0.107 | capacity-capped |
+| 28 | 35 | 21 | 62.5% | +0.482 | as requested |
+| 56 | 70 | 42 | 62.5% | +0.482 | as requested |
+| 112 | 140 | 84 | 62.5% | +0.482 | as requested |
+
+For seven equal blocks, `Q ≈ within_fraction − 1/7`, which the measured values
+match to three decimals — an analytic check on the sampler.
+
+### Finite-size limits, stated plainly
+
+A block pair cannot hold more edges than it has node pairs, so at small N the
+preference is capped by **capacity, not by choice**:
+
+- **N = 7** — one agent per block, so within-block capacity is **zero**. No
+  within-block edge can exist at any ratio. The graph is entirely
+  between-block and its negative modularity says so. **N = 7 modular is not a
+  modular graph** and must not be presented as one; it is a labelled random
+  graph. `params["within_structure_possible"]` is `False` there and only there.
+- **N = 14** — two agents per block, so within-block capacity is 1 per block,
+  7 in total against a budget of 28. The within share is capped at **25%**
+  however strong the requested ratio. `params["capacity_clamped"]` is `True`.
+
+Both are properties of the design at those sizes, consistent with N = 7 being
+a declared boundary case throughout this study.
+
+### Tie-breaking, and a defect that was fixed
+
+Proportional demand rarely divides evenly, so the leftover edges are handed out
+by largest fractional remainder. When remainders tie, the tie must be broken.
+Breaking it by block-pair **index** was the first implementation and it was
+wrong: at N = 7 *every* cell ties (each of the 21 between-block pairs is owed
+14/21 of an edge and can hold exactly one), so index order always selected the
+same 14 low-index pairs. The N = 7 modular graph was then identical for all
+five seeds and systematically biased toward low-numbered agents.
+
+Ties are now broken by a seeded random permutation, so N = 7 modular yields
+five distinct graphs across the five study seeds. `allocate_block_edges`
+remains a pure deterministic function when called without an `rng`.
+
+---
+
+## 13. Yeo-SBM topology (Week 2)
+
+Identical machinery to §12, but the 7x7 block preferences are **empirically
+derived from human structural connectivity** instead of one flat contrast.
+Block *b* **is** functional network *b*: the matrix rows and `contracts.YEO7`
+share an order, which is what lets `assign_roles` read roles straight off the
+blocks.
+
+### 13.1 The derived matrix — provenance
+
+`data/yeo/yeo7x7_sc.json`, produced by
+`python -m neuromesh.graphs.cli yeo-derive`.
+
+| Item | Value |
+|---|---|
+| Source | ENIGMA Toolbox group-average HCP connectome |
+| Files | `strucMatrix_ctx_schaefer_200.csv`, `strucLabels_ctx_schaefer_200.csv` |
+| Parcellation | Schaefer2018, 200 parcels, `7Networks` order |
+| Modality | **Structural** (diffusion tractography), never functional |
+| Licence | **BSD-3-Clause** — redistribution permitted with attribution |
+| Aggregation | Arithmetic **mean** of parcel-pair entries per block; parcel self-pairs excluded on the diagonal |
+| Validation | 200x200, exactly symmetric, all labels parsed, all 7 networks present, all 49 block means non-negative |
+
+**Mean, not sum**, because the seven networks hold unequal numbers of parcels
+(12 for limbic to 46 for default at Schaefer-200); sums would re-encode network
+size rather than connectivity.
+
+**Structural, not functional**, because the Yeo networks were themselves
+defined by clustering resting-state *functional* connectivity, so an
+FC-derived matrix would largely re-encode the parcellation instead of
+providing independent structural evidence.
+
+Two provider transforms carry into the write-up and are recorded in the file:
+the source matrix is **distance-thresholded** (about 88% of parcel pairs are
+exactly zero) and **log-transformed**. Block means are therefore means of
+transformed values that blend connection *strength* with connection *density*;
+the per-block density is stored separately in `provenance["block_density"]` so
+the two can be separated. A small number of source entries are negative (16 of
+4,822 non-zero, a consequence of the log transform); **every one of the 49
+aggregated block means is non-negative**, so no shift or re-transform was
+applied, and the derivation refuses to emit a negative block mean.
+
+### 13.2 Derived 7x7 block means
+
+|  | Vis | SomMot | DorsAttn | SalVentAttn | Limbic | Cont | Default |
+|---|---|---|---|---|---|---|---|
+| **Vis** | 3.108 | 0.056 | 0.416 | 0.216 | 1.168 | 0.202 | 0.501 |
+| **SomMot** | 0.056 | 2.051 | 0.864 | 1.192 | 0.052 | 0.361 | 0.200 |
+| **DorsAttn** | 0.416 | 0.864 | 1.491 | 0.712 | 0.175 | 0.829 | 0.517 |
+| **SalVentAttn** | 0.216 | 1.192 | 0.712 | 1.525 | 0.476 | 0.912 | 0.974 |
+| **Limbic** | 1.168 | 0.052 | 0.175 | 0.476 | 2.650 | 0.852 | 1.049 |
+| **Cont** | 0.202 | 0.361 | 0.829 | 0.912 | 0.852 | 1.378 | 1.234 |
+| **Default** | 0.501 | 0.200 | 0.517 | 0.974 | 1.049 | 1.234 | 1.473 |
+
+Within-network connectivity exceeds between-network by a factor of **3.17** on
+average. The off-diagonal is strongly heterogeneous — visual-somatomotor is
+near zero (0.056, with only 0.9% of parcel pairs connected) while
+default-frontoparietal is high (1.234) — which is what makes Yeo-SBM a
+different topology from the uniform modular model rather than a reskin of it.
+
+### 13.3 Realised structure (seed 0, measured)
+
+| N | within edges | within % | modularity Q |
+|---|---|---|---|
+| 7 | 0 | 0% | −0.153 |
+| 14 | 7 | 25% | +0.101 |
+| 28 | 16 | 28.6% | +0.141 |
+| 56 | 36 | 32.1% | +0.177 |
+| 112 | 73 | 32.6% | +0.182 |
+
+Yeo-SBM is **measurably less modular than the uniform modular topology**
+(Q ≈ 0.18 against 0.48) because the empirical within/between ratio is 3.17
+rather than the modular model's 10. That contrast is the scientific point of
+having both.
+
+### 13.4 The empirical matrix sets contrast, not density
+
+Absolute connection density comes from this study's matched mean degree, not
+from the brain. The generated graph reproduces the connectome's *relative*
+between-network preferences at mean degree 4 — it is a brain-**informed**
+topology, not a brain simulation. This must be stated in the methods section.
+
+### 13.5 N = 7 is fully determined by the data
+
+At N = 7 every block pair holds exactly one possible edge, and the 21
+off-diagonal empirical weights are all distinct. The allocator therefore has no
+ties to break and selects **exactly the 14 strongest inter-network connections**
+— the same graph for every seed. This is the faithful result at that size, not
+a defect, and it is why `test_different_seeds_give_different_graphs` carries a
+documented skip for `yeo_sbm` at N = 7 only.
+
+### 13.6 Without the data, the topology fails loudly
+
+`generate_graph("yeo_sbm", ...)` raises `YeoMatrixUnavailableError` when
+`data/yeo/yeo7x7_sc.json` is absent. A caller may pass `matrix=` to exercise
+the sampler with a synthetic matrix, and that path sets
+`params["matrix_source"] = "caller_supplied"` so no downstream log can mistake
+a mechanics test for a data-informed run. **No invented connectivity values
+exist anywhere in this repository.**
+
+---
+
+## 14. Balanced role assignment (Week 2)
+
+`assign_roles(graph, seed)` gives every node exactly one of the seven
+`contracts.YEO7` roles, with exactly **N/7 agents per network** at all five
+population sizes. It modifies the graph in place and returns it; **the node set
+and every edge are left untouched**.
+
+Two regimes, recorded in `graph.graph["role_assignment"]["regime"]`:
+
+| Topologies | Regime | Seed-dependent |
+|---|---|---|
+| `er`, `ws`, `ba` | `randomised_balanced` — labels shuffled with a seeded generator | **Yes** |
+| `modular`, `yeo_sbm` | `community` — role read off the node's block | **No** |
+
+The second regime is seed-**in**dependent by design. Once a node's community is
+fixed there is no freedom left, and reshuffling roles across blocks would break
+the correspondence between the generator's 7x7 matrix and the roles the agents
+play — which is the entire point of Yeo-SBM.
+
+Role assignment draws from a **separate random stream** from graph generation
+(`SeedSequence(entropy=[seed, ROLE_SEED_SALT])`), so role placement is not
+correlated with the draw that produced the graph.
+
+### 14.1 Interpretation warning: role placement is a confound across topology families
+
+Role placement is generated by two different regimes (table above), so
+**a performance difference between a block topology and a non-block topology
+cannot be attributed to the arrangement of links alone.** Two factors change
+together at that boundary:
+
+1. the topology itself, and
+2. how roles sit on it — randomised and redrawn per seed for `er`/`ws`/`ba`,
+   so results average over placement; perfectly aligned with the communities
+   and identical at every seed for `modular`/`yeo_sbm`, so results carry zero
+   placement variance and maximal role–community alignment.
+
+| Comparison | Clean read on topology? |
+|---|---|
+| ER vs WS vs BA | **Yes** — same regime, placement averaged over seeds |
+| modular vs Yeo-SBM | **Yes** — same regime, placement fixed by blocks |
+| ER/WS/BA vs modular/Yeo-SBM | **No** — topology and placement regime vary together |
+
+This is a consequence of the design, not a defect: for Yeo-SBM the entire
+point is that block *b* is functional network *b*, so that alignment cannot be
+randomised away without destroying what the topology means. Note also that the
+seven roles are *defined* by the Yeo networks, so for the block topologies the
+community structure and the role structure are the same object by
+construction.
+
+Two practical implications:
+
+- Any cross-family claim in the report must state the confound. Prefer
+  within-family statements where the design allows.
+- Disentangling the two factors would need an extra condition — for example a
+  block topology run with deliberately shuffled role labels, which would break
+  role–community alignment while keeping the link arrangement. That condition
+  is **not** part of the current experimental design and is not implemented.
+  Raised for the team; it is a design question, not a Track A implementation
+  choice.
+
+Variance consequence worth recording: because role placement is fixed for the
+block topologies, their seed-to-seed variance reflects link placement only,
+while ER/WS/BA seed variance reflects link placement *and* role placement.
+Error bars from the two families are therefore not measuring the same thing.
+
+```python
+from neuromesh.graphs import generate_graph, assign_roles
+
+graph = assign_roles(generate_graph("yeo_sbm", 112, seed=0), seed=0)
+graph.nodes[0]["role"]        # 'visual'
+graph.nodes[0]["community"]   # 0
+```
+
+---
+
+## 15. Week 2 limitations and follow-ups
+
+1. **N = 7 modular carries no community structure** (§12) and **N = 7 Yeo-SBM
+   is deterministic** (§13.5). Both are consequences of one agent per network.
+2. **N = 14 modular/Yeo-SBM are capacity-capped at 25% within-block edges**
+   (§12), so the requested preference is not realised there.
+3. **The Yeo block means mix strength and density** (§13.1), because the source
+   matrix is thresholded. The per-block density is recorded for anyone who
+   needs to separate them.
+4. **The ENIGMA HCP subject count is still not published** on the toolbox's
+   documentation page, so no cohort size is cited anywhere. Unresolved item U1
+   in `data/yeo/README_YEO_SOURCES.md`.
+5. **An FC-derived sensitivity matrix has not been produced.** The design names
+   SC as primary; FC remains a possible robustness check.
+6. **Follow-up, not done:** `DEFAULT_FIXTURE_DIR` is a path relative to the
+   working directory, so `load_graph()` only resolves from the repository root.
+   The Yeo loader resolves relative to the package instead and works from
+   anywhere; harmonising the fixture loader the same way is a one-line change
+   left for team review, since it alters existing Week 1 behaviour.
+7. **Follow-up, not done:** fixtures remain seed 0 only; `--seeds 0 1 2 3 4`
+   produces all 125.

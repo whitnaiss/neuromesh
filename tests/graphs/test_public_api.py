@@ -241,22 +241,30 @@ def test_adapter_and_generator_layer_agree(topology):
 # error handling
 # --------------------------------------------------------------------------
 
-@pytest.mark.parametrize("topology", PLANNED_TOPOLOGIES)
-def test_week_two_topologies_raise_not_implemented(topology):
-    """modular and yeo_sbm are declared in contracts.Topology but not built.
+@pytest.mark.parametrize("topology", ["modular", "yeo_sbm"])
+def test_block_topologies_are_implemented(topology):
+    """Both were roadmap items in Week 1; they must now actually generate."""
+    graph = generate_graph(topology, 28)
 
-    They must fail as "not implemented yet", not as "unknown topology", so a
-    teammate reading the error knows it is a roadmap item rather than a typo.
-    """
-    with pytest.raises(NotImplementedError, match="Week 2"):
-        generate_graph(topology, 28)
+    assert graph.number_of_nodes() == 28
+    assert graph.number_of_edges() == 56
+    assert nx.is_connected(graph)
 
 
-def test_planned_topologies_are_exactly_the_contract_minus_week_one():
-    """Keep this list honest against contracts.Topology, which is frozen Nov 1."""
+def test_every_declared_topology_is_implemented():
+    """Keep this list honest against contracts.Topology, which Track D owns."""
     declared = set(Topology.__args__)
-    assert declared == set(TOPOLOGIES) | set(PLANNED_TOPOLOGIES)
-    assert set(TOPOLOGIES) == {"er", "ws", "ba"}
+    assert declared == set(TOPOLOGIES)
+    assert set(TOPOLOGIES) == {"er", "ws", "ba", "modular", "yeo_sbm"}
+    assert PLANNED_TOPOLOGIES == (), "nothing declared is still unbuilt"
+
+
+def test_yeo_sbm_fails_loudly_without_its_empirical_matrix(tmp_path):
+    """The data-defined topology must never fall back to invented weights."""
+    from neuromesh.graphs import YeoMatrixUnavailableError, yeo_sbm
+
+    with pytest.raises(YeoMatrixUnavailableError):
+        yeo_sbm(28, seed=0, matrix_path=tmp_path / "absent.json")
 
 
 def test_unknown_topology_is_rejected():
@@ -308,12 +316,23 @@ def test_non_default_mean_degree_is_honoured():
 # --------------------------------------------------------------------------
 
 def test_later_week_entry_points_are_still_placeholders():
-    """Week 1 is graphs only. These must not pretend to work."""
+    """``structural_metrics`` is later-week work and must not pretend to work.
+
+    ``assign_roles`` is no longer here: it is implemented, and is covered by
+    ``tests/graphs/test_roles.py``.
+    """
     graph = generate_graph("er", 14)
-    with pytest.raises(NotImplementedError, match="assign_roles"):
-        assign_roles(graph, seed=0)
     with pytest.raises(NotImplementedError, match="structural_metrics"):
         structural_metrics(graph)
+
+
+def test_assign_roles_is_implemented_and_balanced():
+    """The Week 1 placeholder is gone; the entry point must really work."""
+    graph = assign_roles(generate_graph("er", 14), seed=0)
+
+    roles = nx.get_node_attributes(graph, "role")
+    assert len(roles) == 14
+    assert set(roles.values()) == set(YEO7)
 
 
 def test_remove_nodes_is_still_a_placeholder():
@@ -324,7 +343,7 @@ def test_remove_nodes_is_still_a_placeholder():
         remove_nodes(graph, RemovalSpec(mode="random", fraction=0.1), seed=0)
 
 
-def test_no_yeo_roles_are_assigned_yet():
-    """Role assignment is Week 2: no node may carry a fabricated role."""
+def test_generation_does_not_assign_roles_on_its_own():
+    """Roles are opt-in: ``generate_graph`` must not invent them."""
     graph = generate_graph("ba", 28)
     assert all("role" not in data for _, data in graph.nodes(data=True))

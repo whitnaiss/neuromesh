@@ -1,0 +1,190 @@
+{
+  "diagonal_is": "within-network mean edge weight (parcel self-pairs excluded)",
+  "matrix": [
+    [
+      3.107678571428572,
+      0.05564206896551724,
+      0.41630530503978774,
+      0.21613166144200627,
+      1.1678824712643678,
+      0.202012183908046,
+      0.5005356821589205
+    ],
+    [
+      0.05564206896551724,
+      2.0509452100840337,
+      0.8639791208791209,
+      1.1917123376623378,
+      0.05159952380952381,
+      0.36137742857142857,
+      0.19973062111801243
+    ],
+    [
+      0.41630530503978774,
+      0.8639791208791209,
+      1.4905547692307692,
+      0.7122973776223777,
+      0.17509551282051283,
+      0.8294422692307692,
+      0.5167976254180602
+    ],
+    [
+      0.21613166144200627,
+      1.1917123376623378,
+      0.7122973776223777,
+      1.5253878787878787,
+      0.476029696969697,
+      0.9118656515151515,
+      0.9738220355731226
+    ],
+    [
+      1.1678824712643678,
+      0.05159952380952381,
+      0.17509551282051283,
+      0.476029696969697,
+      2.6504060606060604,
+      0.8523649999999999,
+      1.0493153985507246
+    ],
+    [
+      0.202012183908046,
+      0.36137742857142857,
+      0.8294422692307692,
+      0.9118656515151515,
+      0.8523649999999999,
+      1.3777364597701152,
+      1.2340075579710144
+    ],
+    [
+      0.5005356821589205,
+      0.19973062111801243,
+      0.5167976254180602,
+      0.9738220355731226,
+      1.0493153985507246,
+      1.2340075579710144,
+      1.4728457004830917
+    ]
+  ],
+  "networks": [
+    "visual",
+    "somatomotor",
+    "dorsal_attention",
+    "ventral_attention",
+    "limbic",
+    "frontoparietal",
+    "default"
+  ],
+  "provenance": {
+    "aggregation": "arithmetic mean of source matrix entries over all parcel pairs in the block; parcel self-pairs excluded on the diagonal",
+    "block_density": [
+      [
+        0.4014778325123153,
+        0.008866995073891626,
+        0.0610079575596817,
+        0.032915360501567396,
+        0.19827586206896552,
+        0.0367816091954023,
+        0.08020989505247376
+      ],
+      [
+        0.008866995073891626,
+        0.2907563025210084,
+        0.13516483516483516,
+        0.17662337662337663,
+        0.011904761904761904,
+        0.06380952380952382,
+        0.034782608695652174
+      ],
+      [
+        0.0610079575596817,
+        0.13516483516483516,
+        0.20615384615384616,
+        0.10839160839160839,
+        0.02564102564102564,
+        0.12435897435897436,
+        0.08361204013377926
+      ],
+      [
+        0.032915360501567396,
+        0.17662337662337663,
+        0.10839160839160839,
+        0.2077922077922078,
+        0.08333333333333333,
+        0.15151515151515152,
+        0.1551383399209486
+      ],
+      [
+        0.19827586206896552,
+        0.011904761904761904,
+        0.02564102564102564,
+        0.08333333333333333,
+        0.36363636363636365,
+        0.14444444444444443,
+        0.161231884057971
+      ],
+      [
+        0.0367816091954023,
+        0.06380952380952382,
+        0.12435897435897436,
+        0.15151515151515152,
+        0.14444444444444443,
+        0.2045977011494253,
+        0.1927536231884058
+      ],
+      [
+        0.08020989505247376,
+        0.034782608695652174,
+        0.08361204013377926,
+        0.1551383399209486,
+        0.161231884057971,
+        0.1927536231884058,
+        0.20772946859903382
+      ]
+    ],
+    "citation": [
+      "Yeo et al. 2011, J Neurophysiol 106(3), DOI 10.1152/jn.00338.2011",
+      "Schaefer et al. 2018, Cerebral Cortex 28(9), 3095-3114",
+      "Lariviere et al. 2021, Nature Methods 18(7), ENIGMA Toolbox, DOI 10.1101/2020.12.21.423838"
+    ],
+    "licence": "BSD-3-Clause (ENIGMA Toolbox)",
+    "licence_notice": "Derived from data redistributed by the ENIGMA Toolbox under the BSD 3-Clause License. Copyright (c) 2020, saratheriver. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the conditions of the BSD 3-Clause License are met, including retention of this copyright notice, the list of conditions and the following disclaimer. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES ARE DISCLAIMED. See the full licence text at the URL in 'licence_url'. Neither the name of the copyright holder nor the names of its contributors endorse this project.",
+    "licence_url": "https://github.com/MICA-MNI/ENIGMA/blob/master/LICENSE",
+    "modality": "structural",
+    "n_parcels": 200,
+    "notes": "ENIGMA Toolbox master branch, retrieved 2026-11-18. Source matrix is provider-thresholded and log-transformed. Subject count not stated in ENIGMA documentation (unresolved item U1).",
+    "parcellation": "Schaefer2018_200Parcels_7Networks",
+    "parcels_per_network": [
+      29,
+      35,
+      26,
+      22,
+      12,
+      30,
+      46
+    ],
+    "retrieved_utc": "2026-11-18T06:09:41+00:00",
+    "source": "ENIGMA Toolbox group-average HCP connectome",
+    "source_is_symmetric": true,
+    "source_sha256": {
+      "strucLabels_ctx_schaefer_200.csv": "dc3766a114ab914ff1d8e4981eb063157eeff45671c524023d9d634e767f88e5",
+      "strucMatrix_ctx_schaefer_200.csv": "71f1111f25a3fd9b14a8647214019e332962924e856dc79edbeffb9ef635c638"
+    },
+    "source_transform": "provider-applied distance-dependent thresholding and log transform; not inverted here",
+    "source_urls": [
+      "https://raw.githubusercontent.com/MICA-MNI/ENIGMA/master/enigmatoolbox/datasets/matrices/hcp_connectivity/strucMatrix_ctx_schaefer_200.csv",
+      "https://raw.githubusercontent.com/MICA-MNI/ENIGMA/master/enigmatoolbox/datasets/matrices/hcp_connectivity/strucLabels_ctx_schaefer_200.csv"
+    ],
+    "symmetrised": false,
+    "within_between_ratio": 3.166139314947349
+  },
+  "schema_version": 1,
+  "source_networks": [
+    "Vis",
+    "SomMot",
+    "DorsAttn",
+    "SalVentAttn",
+    "Limbic",
+    "Cont",
+    "Default"
+  ]
+}
