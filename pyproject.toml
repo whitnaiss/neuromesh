@@ -21,6 +21,12 @@ dependencies = [
   "pyarrow>=14",
   "pydantic>=2.5",
   "pyyaml>=6.0",
+  # Required by networkx>=3.2: nx.pagerank dispatches to its SciPy sparse
+  # implementation (_pagerank_scipy), which imports scipy at call time. Floor
+  # matches networkx's own "default" extra (scipy>=1.11.2). Declared directly
+  # rather than via networkx[default], which would also pull in matplotlib and
+  # pandas that this project does not need from networkx.
+  "scipy>=1.11.2",
 ]
 
 [project.optional-dependencies]
