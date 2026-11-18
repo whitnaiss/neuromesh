@@ -316,10 +316,11 @@ def test_non_default_mean_degree_is_honoured():
 # --------------------------------------------------------------------------
 
 def test_later_week_entry_points_are_still_placeholders():
-    """``structural_metrics`` is later-week work and must not pretend to work.
+    """``structural_metrics`` is Week 4 work and must not pretend to work.
 
-    ``assign_roles`` is no longer here: it is implemented, and is covered by
-    ``tests/graphs/test_roles.py``.
+    ``assign_roles`` and ``remove_nodes`` are no longer here: both are
+    implemented, and are covered by ``tests/graphs/test_roles.py`` and
+    ``tests/graphs/test_robustness.py`` respectively.
     """
     graph = generate_graph("er", 14)
     with pytest.raises(NotImplementedError, match="structural_metrics"):
@@ -335,12 +336,30 @@ def test_assign_roles_is_implemented_and_balanced():
     assert set(roles.values()) == set(YEO7)
 
 
-def test_remove_nodes_is_still_a_placeholder():
+@pytest.mark.parametrize("mode", ["random", "targeted"])
+def test_remove_nodes_is_implemented_through_the_shared_interface(mode):
+    """The Week 1/2 placeholder is gone; the entry point must really work.
+
+    Deliberately minimal -- this module tests the *adapter*, so it checks only
+    the shape the runner depends on: a bare graph in, a bare graph out, with
+    the node count the fraction implies. The algorithms, the invariants and
+    the boundary cases are ``tests/graphs/test_robustness.py``.
+    """
     from neuromesh.contracts import RemovalSpec
 
-    graph = generate_graph("er", 14)
-    with pytest.raises(NotImplementedError, match="remove_nodes"):
-        remove_nodes(graph, RemovalSpec(mode="random", fraction=0.1), seed=0)
+    graph = assign_roles(generate_graph("er", 112, seed=0), seed=0)
+    out = remove_nodes(graph, RemovalSpec(mode=mode, fraction=0.1), seed=0)
+
+    assert isinstance(out, nx.Graph)
+    assert not isinstance(out, tuple)
+    # fraction 0.1 of N=112 is floor(11.2) = 11 nodes
+    assert out.number_of_nodes() == 101
+    assert graph.number_of_nodes() == 112, "the input graph must not be modified"
+    assert out.graph["removal"]["strategy"] == mode
+    assert out.graph["removal"]["n_removed"] == 11
+    # surviving node IDs are the originals, not a 0..100 relabelling
+    assert set(out.nodes()) < set(graph.nodes())
+    assert sorted(out.nodes()) != list(range(101))
 
 
 def test_generation_does_not_assign_roles_on_its_own():

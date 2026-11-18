@@ -7,8 +7,10 @@ Status
 ------
 ``generate_graph`` is implemented for all five topologies: ``er``, ``ws``,
 ``ba``, ``modular`` and ``yeo_sbm``. ``assign_roles`` is implemented and
-assigns the seven Yeo functional roles in balance. ``remove_nodes`` and
-``structural_metrics`` remain placeholders owned by later weeks.
+assigns the seven Yeo functional roles in balance. ``remove_nodes`` is
+implemented as of Week 3 -- random failure and adaptive highest-degree attack,
+in ``robustness.py``. ``structural_metrics`` remains a placeholder owned by
+Week 4.
 
 ``yeo_sbm`` is defined by empirical data: it needs the derived 7x7 inter-network
 structural matrix (``data/yeo/yeo7x7_sc.json``) and raises
@@ -62,6 +64,17 @@ import networkx as nx
 
 from neuromesh.contracts import DEFAULT_MEAN_DEGREE, RemovalSpec, Topology
 
+from .analysis import (
+    DEFAULT_ROUND_BUDGETS,
+    STD_CONVENTION,
+    aggregate_path_metrics,
+    diameter_table,
+    measure_graph,
+    path_metrics,
+    render_aggregate_table,
+    render_measurement_table,
+    round_budget_assessment,
+)
 from .blocks import (
     N_BLOCKS,
     allocate_block_edges,
@@ -96,6 +109,24 @@ from .generators import (
 )
 from .generators import (
     generate_graph as generate_from_spec,
+)
+from .robustness import (
+    DEFAULT_ROUNDING_RULE,
+    DEFAULT_TIE_BREAK,
+    REMOVAL_SEED_SALT,
+    REMOVAL_STRATEGIES,
+    ROUNDING_RULES,
+    TIE_BREAKS,
+    RemovalResult,
+    canonical_nodes,
+    random_removal_order,
+    removal_count,
+    remove_node_set,
+    remove_nodes_by_count,
+    remove_nodes_by_fraction,
+    static_removal_order,
+    targeted_removal_order,
+    validate_attacked_graph,
 )
 from .roles import assign_roles, role_counts, roles_are_balanced
 from .spec import (
@@ -213,8 +244,84 @@ def generate_graph(
 
 
 def remove_nodes(graph: nx.Graph, spec: RemovalSpec, seed: int) -> nx.Graph:
-    """Random or highest-degree-first removal; never removes every readout node."""
-    raise NotImplementedError("Track A: remove_nodes")
+    """Random or adaptive highest-degree removal, by fraction. Shared interface.
+
+    This is the entry point named in ``contracts.py`` and called by the runner.
+    Like :func:`generate_graph` it is a thin adapter: the algorithms live in
+    ``robustness.py`` and nothing here decides anything scientific.
+
+    Parameters
+    ----------
+    graph:
+        The graph to attack. **Not modified.** Usually a generated graph with
+        roles already assigned, so the surviving graph keeps its ``role`` and
+        ``community`` attributes.
+    spec:
+        ``RemovalSpec(mode=..., fraction=...)``. ``mode="random"`` is
+        indiscriminate failure; ``mode="targeted"`` is the adaptive
+        highest-degree attack (degrees recomputed after every removal). The
+        fraction converts to a node count by
+        :func:`~neuromesh.graphs.robustness.removal_count` with the **floor**
+        rule, so at N = 112 the study's 10/20/30% levels remove 11, 22 and 33
+        nodes (9.82%, 19.64%, 29.46%).
+    seed:
+        Non-negative integer. Identical ``(graph, spec, seed)`` always yields
+        an identical surviving graph.
+
+    Returns
+    -------
+    networkx.Graph
+        The surviving induced subgraph: original node IDs, original node and
+        edge attributes, and exactly those original edges whose endpoints both
+        survived. Node IDs are **not** renumbered, roles are **not**
+        rebalanced, and connectivity is **not** restored.
+
+        ``G.graph["removal"]`` carries the full attack record (removal order,
+        the degree each node had when it was removed, component structure,
+        surviving role histogram) -- the same dict as
+        ``RemovalResult.to_dict()``. ``G.graph["mean_degree"]`` is updated to
+        the realised post-attack ``2E/N'``; ``topology``, ``n`` and ``seed``
+        are left untouched because they identify the experimental condition,
+        not the live node count. Use ``G.graph["removal"]["n_surviving"]`` for
+        that.
+
+        Callers needing the removal order itself should prefer
+        :func:`~neuromesh.graphs.robustness.remove_nodes_by_count`, which
+        returns a :class:`~neuromesh.graphs.robustness.RemovalResult` instead
+        of discarding everything but the graph.
+
+    Raises
+    ------
+    GraphParameterError
+        Invalid seed, or a non-graph/directed input. Subclasses ``ValueError``.
+
+    Notes
+    -----
+    **An attacked graph is expected to be disconnected and off mean degree
+    4.** It must not be passed to :func:`validate_graph`, whose connectivity
+    and mean-degree checks encode *generator* contracts;
+    :func:`~neuromesh.graphs.robustness.validate_attacked_graph` is the
+    checker for this output.
+
+    **Readout agents are not protected.** The Week 1 placeholder docstring for
+    this function promised it would "never remove every readout node". That
+    promise is deliberately not implemented, because silently sparing nodes
+    would make the attack something other than the attack that was requested
+    and would hide exactly the failure mode the robustness experiment exists
+    to find. Instead the outcome is measured and reported:
+    ``G.graph["removal"]["readout_surviving"]`` and ``["roles_intact"]``. A
+    caller who genuinely wants a protected set can pass ``protected=`` to
+    ``remove_nodes_by_count``. Raised for the team as a design question --
+    see ``docs/track_a.md`` §16.6.
+    """
+    result = remove_nodes_by_fraction(
+        graph,
+        spec.fraction,
+        spec.mode,
+        seed=seed,
+        rule=DEFAULT_ROUNDING_RULE,
+    )
+    return result.graph
 
 
 def structural_metrics(graph: nx.Graph) -> dict:
@@ -266,6 +373,33 @@ __all__ = [
     # roles
     "role_counts",
     "roles_are_balanced",
+    # node removal (Week 3)
+    "DEFAULT_ROUNDING_RULE",
+    "DEFAULT_TIE_BREAK",
+    "REMOVAL_SEED_SALT",
+    "REMOVAL_STRATEGIES",
+    "ROUNDING_RULES",
+    "TIE_BREAKS",
+    "RemovalResult",
+    "canonical_nodes",
+    "random_removal_order",
+    "remove_node_set",
+    "remove_nodes_by_count",
+    "remove_nodes_by_fraction",
+    "removal_count",
+    "static_removal_order",
+    "targeted_removal_order",
+    "validate_attacked_graph",
+    # shortest-path / round-budget analysis (Week 3)
+    "DEFAULT_ROUND_BUDGETS",
+    "STD_CONVENTION",
+    "aggregate_path_metrics",
+    "diameter_table",
+    "measure_graph",
+    "path_metrics",
+    "render_aggregate_table",
+    "render_measurement_table",
+    "round_budget_assessment",
     # Yeo connectivity matrix
     "DEFAULT_YEO_MATRIX_PATH",
     "SCHAEFER_TO_YEO7",

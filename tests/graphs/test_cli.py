@@ -199,3 +199,112 @@ def test_a_subcommand_is_required():
 def test_unknown_subcommand_is_rejected():
     with pytest.raises(SystemExit):
         main(["not-a-command"])
+
+
+# --------------------------------------------------------------------------
+# diameters (Week 3)
+# --------------------------------------------------------------------------
+
+def test_diameters_prints_the_full_measurement_and_aggregate_tables(capsys):
+    assert main(["diameters", "--n", "112"]) == 0
+
+    out = capsys.readouterr().out
+    assert "Shortest-path structure at N = 112" in out
+    assert "25 configurations measured" in out
+    for topology in TOPOLOGIES:
+        assert out.count(f"| {topology}") >= 5
+    assert "Per-topology aggregate" in out
+    assert "ddof=1" in out
+    # the headline finding must be visible without reading the JSON
+    assert "10 rounds: 23/25" in out
+    assert "12 rounds: 24/25" in out
+    assert "Largest measured diameter: 13 at ws seed=4" in out
+    assert "Smallest budget covering every measured condition: 13 rounds" in out
+    assert "NOT a guarantee" in out
+
+
+def test_diameters_reports_both_budgets_as_insufficient(capsys):
+    assert main(["diameters"]) == 0
+    out = capsys.readouterr().out
+    assert out.count("[INSUFFICIENT]") == 2
+    assert "exceeded by ws seed=1 (diameter 11)" in out
+    assert "exceeded by ws seed=4 (diameter 13)" in out
+
+
+def test_diameters_exit_code_is_zero_despite_a_budget_violation(capsys):
+    """A diameter over budget is a finding, not an execution failure."""
+    assert main(["diameters", "--rounds", "10"]) == 0
+    assert "INSUFFICIENT" in capsys.readouterr().out
+
+
+def test_diameters_accepts_a_custom_scale_and_seed_set(capsys):
+    assert main(["diameters", "--n", "14", "--seeds", "0", "1"]) == 0
+    out = capsys.readouterr().out
+    assert "Shortest-path structure at N = 14" in out
+    assert "10 configurations measured" in out
+
+
+def test_diameters_cross_checks_the_committed_fixtures(capsys):
+    assert main(["diameters", "--check-fixtures"]) == 0
+    out = capsys.readouterr().out
+    assert "Fixture cross-check" in out
+    assert out.count("[OK]") == len(TOPOLOGIES)
+    assert "MISMATCH" not in out
+
+
+def test_diameters_skips_absent_fixtures_rather_than_failing(capsys, tmp_path):
+    assert main(["diameters", "--n", "14", "--seeds", "0",
+                 "--check-fixtures", "--fixture-dir", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert out.count("[SKIP]") == len(TOPOLOGIES)
+
+
+def test_diameters_writes_a_reproducible_json_report(tmp_path, capsys):
+    out_path = tmp_path / "nested" / "diameters.json"
+    assert main(["diameters", "--json", str(out_path)]) == 0
+    capsys.readouterr()
+
+    payload = json.loads(out_path.read_text(encoding="utf-8"))
+    assert payload["n"] == 112
+    assert payload["seeds"] == [0, 1, 2, 3, 4]
+    assert payload["round_budgets"] == [10, 12]
+    assert len(payload["rows"]) == 25
+    assert len(payload["aggregates"]) == 5
+    assert payload["assessment"]["max_diameter"] == 13
+    assert payload["assessment"]["minimum_budget_covering_all_measured"] == 13
+    assert payload["rows"][0]["round_check"]["10"] is True
+
+    first = out_path.read_text(encoding="utf-8")
+    second_path = tmp_path / "again.json"
+    assert main(["diameters", "--json", str(second_path)]) == 0
+    capsys.readouterr()
+    assert second_path.read_text(encoding="utf-8") == first
+
+
+def test_diameters_detects_a_fixture_that_disagrees_with_the_generator(
+    tmp_path, capsys
+):
+    """A doctored fixture must make the command fail, not pass quietly."""
+    from neuromesh.graphs import GraphSpec, fixture_filename, generate_from_spec
+    from neuromesh.graphs.fixtures import graph_to_record, render_record
+
+    for topology in TOPOLOGIES:
+        graph, metadata = generate_from_spec(GraphSpec(topology, n=14, seed=0))
+        record = graph_to_record(graph, metadata)
+        if topology == "ws":
+            # delete one edge: the diameter can only grow or stay, never match
+            # the regenerated graph's edge count
+            record["edges"] = record["edges"][1:]
+            record["metadata"]["n_edges"] = len(record["edges"])
+            record["metadata"]["mean_degree"] = 2 * len(record["edges"]) / 14
+            record["metadata"]["connected"] = None
+            record["metadata"]["n_components"] = None
+        (tmp_path / fixture_filename(topology, 14, 0)).write_text(
+            render_record(record), encoding="utf-8"
+        )
+
+    assert main(["diameters", "--n", "14", "--seeds", "0",
+                 "--check-fixtures", "--fixture-dir", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "MISMATCH" in out
+    assert "EXECUTION FAILURES" in out

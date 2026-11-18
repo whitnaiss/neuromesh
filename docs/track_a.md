@@ -2,9 +2,11 @@
 
 Modules: `src/neuromesh/graphs/`, `data/`, `configs/robustness.yaml`, `tests/integration/`.
 
-**Status: Week 2 complete — all five topologies, balanced role assignment,
-the derived Yeo 7×7 matrix, validation and fixtures.**
-`remove_nodes` and `structural_metrics` remain placeholders for later weeks.
+**Status: Week 3 complete — node removal (random and adaptive targeted), the
+end-to-end mock integration test, and the N = 112 diameter / round-budget
+analysis, on top of Week 2's five topologies, balanced role assignment,
+derived Yeo 7×7 matrix, validation and fixtures.**
+`structural_metrics` remains a placeholder for Week 4.
 
 | Setting | Value |
 |---|---|
@@ -26,6 +28,18 @@ the derived Yeo 7×7 matrix, validation and fixtures.**
   models. §14.
 - **Derived matrix** (`data/yeo/yeo7x7_sc.json`) — aggregated from the ENIGMA
   Toolbox HCP group-average Schaefer-200 structural connectome. §13.1.
+
+## Week 3 additions at a glance
+
+- **Node removal** (`robustness.py`) — random failure and *adaptive*
+  highest-degree attack, with a documented tie-break, full attack provenance
+  and an attacked-graph validator. `remove_nodes` in `contracts.py` is now
+  implemented. §16.
+- **Mock integration test** (`tests/integration/test_mock_pipeline.py`) —
+  the MVP scenario end to end, offline, in 0.40 s. §17.
+- **Diameter / round-budget analysis** (`analysis.py`, `cli diameters`) —
+  all 25 N = 112 conditions measured. **Headline: 10 rounds covers 23/25 and
+  12 rounds covers 24/25; WS seed 4 has diameter 13.** §18.
 
 ---
 
@@ -482,6 +496,12 @@ This is evidence for choosing **12 rounds**, or for reporting WS propagation at
 N = 112 as diameter-limited. Raised for the team — no parameter has been
 changed, and `DEFAULT_ROUNDS` in `contracts.py` is Andrew's to set.
 
+> **Week 3 update — the risk is worse than this section states.** Seed 0 was
+> the only seed measured in Week 1. Across all five seeds WS reaches diameter
+> **13** (seed 4) and 11 (seed 1), so **12 rounds is not sufficient either**.
+> The full 25-condition measurement and the revised recommendation are in
+> §18. This section is left as written for the record.
+
 ---
 
 ## 11. Known limitations and follow-ups
@@ -505,8 +525,8 @@ changed, and `DEFAULT_ROUNDS` in `contracts.py` is Andrew's to set.
    required an even `k`. ER would still accept it. Harmonising that across the
    three generators would change existing behaviour, so it is logged rather
    than done — the whole study runs at k = 4.
-9. The end-to-end integration test (`tests/integration/`) is a Week 3 Track A
-   task and is not written yet.
+9. ~~The end-to-end integration test (`tests/integration/`) is a Week 3 Track A
+   task and is not written yet.~~ **Done in Week 3** — see §17.
 
 ---
 
@@ -782,3 +802,520 @@ graph.nodes[0]["community"]   # 0
    left for team review, since it alters existing Week 1 behaviour.
 7. **Follow-up, not done:** fixtures remain seed 0 only; `--seeds 0 1 2 3 4`
    produces all 125.
+
+---
+
+## 16. Node removal (Week 3)
+
+`src/neuromesh/graphs/robustness.py`. Two strategies, both deterministic, both
+leaving the input graph untouched.
+
+**Everything in this section describes damaging a graph on purpose.** The
+generator contracts — connected, mean degree 4, exactly N/7 agents per role —
+are properties of the graphs §2 produces and **do not apply to an attacked
+graph**. A targeted attack that fails to fragment the network has measured
+nothing.
+
+### 16.1 The two strategies
+
+| Strategy | Models | Algorithm |
+|---|---|---|
+| `random` | indiscriminate failure (an agent crashes, a call times out) | k distinct nodes drawn uniformly without replacement from an isolated seeded RNG |
+| `targeted` | an adversary who can see the network | **adaptive** highest-degree-first: remove the current maximum-degree node, recompute degrees on the survivors, repeat |
+
+The word *adaptive* is load-bearing. Sorting the original degree sequence once
+and deleting its top k is a different, weaker attack, because it ignores that
+removing a hub demotes the hubs that leaned on it. `static_removal_order()`
+implements that weaker version — **for comparison and testing only, never for
+the experiment** — so the difference is demonstrable rather than asserted.
+
+A worked example, the hand-built graph in `test_robustness.py`:
+
+```
+    3  4  5  6        7   8          9  10  11
+     \ |  | /          \ /            \  |  /
+      \|  |/            1              2
+       0 ---------------+
+```
+
+Original degrees: node 0 → 5, node 1 → 3, node 2 → 3, everything else → 1.
+
+| | Order | Why |
+|---|---|---|
+| static | `0, 1, 2` | sorts once; node 1 wins the degree-3 tie on ID |
+| **adaptive** | `0, 2, 1` | removing 0 costs node 1 an edge, so it drops to degree 2 while node 2 stays at 3 |
+
+At k = 2 the two strategies remove **different sets** (`{0,1}` vs `{0,2}`); at
+k = 3 the same set in a different order. Both are pinned by tests.
+
+### 16.2 Tie-breaking — read this, ties are the normal case
+
+At mean degree 4 most nodes share their degree with several others, so the
+tie-break visibly decides the attack. It is therefore explicit, never implicit:
+
+| `tie_break` | Behaviour | Seed |
+|---|---|---|
+| `smallest_id` | **default**; lowest node ID among the current maxima | not used |
+| `largest_id` | highest node ID among the current maxima | not used |
+| `random` | uniform among the current maxima, from the isolated seeded RNG | **required** |
+
+On a 4-regular ring of 14 nodes the whole sequence is decided by this choice:
+`smallest_id` gives `0, 3, 6, 9, 10` and `largest_id` gives `13, 10, 7, 4, 3`.
+Note that neither walks the ring one step at a time — that is the adaptivity
+showing, because removing node 0 lowers the degree of nodes 1, 2, 12 and 13.
+
+### 16.3 API
+
+```python
+from neuromesh.graphs import (
+    remove_nodes,              # the shared contracts.py interface, by fraction
+    remove_nodes_by_count,     # the primary Track A entry point, by integer k
+    remove_nodes_by_fraction,  # by fraction, returning the full result
+    removal_count,             # the fraction -> count rule
+    validate_attacked_graph,   # the right validator for an attacked graph
+)
+```
+
+```python
+from neuromesh.graphs import assign_roles, generate_graph, remove_nodes_by_count
+
+graph  = assign_roles(generate_graph("ba", 112, seed=0), seed=0)
+result = remove_nodes_by_count(graph, 33, "targeted")
+
+result.n_surviving            # 79
+result.removed_nodes          # the adaptive attack sequence, first strike first
+result.removed_degrees        # the degree each node had WHEN it was removed
+result.original_degrees       # its degree in the original graph
+result.connected              # False -- the attack worked
+result.n_components           # how badly it fragmented
+result.readout_surviving      # surviving frontoparietal agents
+result.to_dict()              # JSON-serialisable; excludes the graph
+graph.number_of_nodes()       # still 112 -- the input is never modified
+```
+
+The shared interface, which is what the runner calls:
+
+```python
+from neuromesh.contracts import RemovalSpec
+from neuromesh.graphs import remove_nodes
+
+attacked = remove_nodes(graph, RemovalSpec(mode="targeted", fraction=0.3), seed=0)
+attacked.graph["removal"]["n_removed"]    # 33
+attacked.graph["removal"]["n_surviving"]  # 79
+```
+
+`remove_nodes` returns a **bare `nx.Graph`**, like `generate_graph`. Prefer
+`remove_nodes_by_count` when you need the removal order, because the adapter
+discards everything but the graph.
+
+### 16.4 What is preserved, and what is not
+
+Preserved, because the result *is* the induced subgraph:
+
+- **Node IDs.** No renumbering, no compaction. Node 57 is still node 57 in a
+  graph with no node 56, so logs join on node ID across removal levels.
+- **Edges** — exactly the original edges whose endpoints both survived. None
+  added, none rewired.
+- **Node and edge attributes**, so `role` and `community` stay on the agents
+  that had them.
+- **The input graph.** `subgraph()` returns a view; `.copy()` detaches it.
+
+Deliberately **not** preserved:
+
+- **Connectivity.** Reported, never restored. No edges are added to compensate.
+- **Mean degree 4.** It falls, as it must.
+- **Role balance.** Not rebalanced. The surviving histogram is reported in
+  `result.role_counts`.
+
+`G.graph` on the result: `topology`, `n` and `seed` are **left untouched**
+because they identify the experimental condition, not the live node count —
+use `G.graph["removal"]["n_surviving"]` for that. `mean_degree` **is** updated
+to the realised post-attack 2E/N', because §1 defines it as the realised value
+and a stale 4.0 on an attacked graph would be a false claim.
+
+### 16.5 Removal counts, and the rounding rule
+
+Integer `k` is the primary API. `removal_count(n, fraction, rule)` converts a
+fraction, with **`floor` as the single rule applied at every scale**:
+
+| N | 10% | 20% | 30% |
+|---|---|---|---|
+| 112 | 11 (9.82%) | 22 (19.64%) | 33 (29.46%) |
+
+**Quote the realised fraction, not the nominal one.** `floor` is the default
+because it never removes more than requested and guarantees `k < N` for every
+`fraction < 1`, so a fractional request cannot wipe out the network through
+rounding. `rule="nearest"` is available and gives 34 at 30%.
+
+Two consequences worth knowing. `floor` rounds small-N requests to zero — 10%
+of N = 7 is `floor(0.7) = 0`, a no-op; the robustness experiment is N = 112
+only, so this does not affect it. And random removal is drawn as a truncated
+permutation, so **removal sets nest**: at a fixed seed the 10% set is a prefix
+of the 20% set, which is a prefix of the 30% set. Adaptive targeted order
+nests for the same reason. The Week 6 robustness curve is therefore a curve
+over one nested sequence of failures rather than three unrelated draws.
+
+Invalid inputs, documented:
+
+| Input | Result |
+|---|---|
+| `k = 0` | exact no-op; a detached copy is still returned |
+| `k = N` | empty graph; `mean_degree_surviving` is `None` |
+| `k > N`, `k < 0` | `GraphParameterError` (a `ValueError`) |
+| `k` not an `int` — including `3.0` and `True` | `TypeError` |
+| `fraction` outside `[0, 1]` | `GraphParameterError` |
+| `fraction` not a number | `TypeError` |
+| `strategy="random"` without a seed | `GraphParameterError` |
+| `tie_break="random"` without a seed | `GraphParameterError` |
+| directed or non-graph input | `GraphParameterError` |
+
+`3.0` raises rather than being read as `3` on purpose: silently rounding here
+is how `k = 2.5` becomes an attack nobody requested.
+
+### 16.6 Readout agents are NOT protected — a deliberate deviation
+
+The Week 1 placeholder docstring for `remove_nodes` promised it would "never
+remove every readout node". **That promise is deliberately not implemented.**
+
+Silently sparing nodes would make the attack something other than the attack
+that was requested, and would hide exactly the failure mode the robustness
+experiment exists to find. Instead the outcome is measured:
+`result.readout_surviving`, `result.role_counts` and `result.roles_intact`,
+all mirrored into `G.graph["removal"]`.
+
+A caller who genuinely wants a protected set can opt in:
+
+```python
+readout = [v for v, d in graph.nodes(data=True) if d["role"] == "frontoparietal"]
+result  = remove_nodes_by_count(graph, 33, "targeted", protected=readout)
+```
+
+**Raised for the team as a design question.** If the consensus is that runs
+with no surviving readout agent should be prevented rather than recorded, the
+decision belongs to Track C (who score the readout) and Track D (who
+orchestrate), not to the removal code. In practice the case is remote at the
+experiment's scale — N = 112 has 16 readout agents and the largest removal
+level takes 33 nodes — but "remote" is not a reason to promise something the
+code does not do.
+
+### 16.7 Validating an attacked graph
+
+Do **not** pass an attacked graph to `validate_graph()`: its `connected` and
+`mean_degree_tolerance` checks encode generator contracts, so it would report
+a `FAIL` for the attack working as designed. Reporting that FAIL would be a
+methodological error.
+
+```python
+from neuromesh.graphs import validate_attacked_graph
+
+for check in validate_attacked_graph(graph, result):
+    print(check.name, check.status, check.detail)
+# partition PASS / induced_subgraph PASS / node_attributes_preserved PASS
+# edge_attributes_preserved PASS / no_duplicate_removals PASS
+# no_renumbering PASS / connectivity_reported EXCEPTION (expected after an attack)
+```
+
+Connectivity is measured and reported as a declared `EXCEPTION`, never a
+`FAIL`.
+
+### 16.8 Reproducibility
+
+Identical `(graph, k, strategy, seed, tie_break)` always gives an identical
+removal order, surviving graph and metadata. Three things secure that:
+
+1. **Canonical node ordering** before any sampling or tie-break, so nothing
+   depends on dict/set iteration order, insertion history or `PYTHONHASHSEED`.
+2. **An isolated RNG** — `SeedSequence(entropy=[seed, REMOVAL_SEED_SALT])`,
+   never the global `random` or `numpy.random`. The salt mirrors
+   `ROLE_SEED_SALT` (§14): without it, removal at seed *s* would consume the
+   same bits that generated the graph at seed *s*. A test perturbs both global
+   RNGs between calls and asserts nothing changes.
+3. **A deterministic default tie-break** (§16.2).
+
+---
+
+## 17. End-to-end mock integration test (Week 3)
+
+`tests/integration/test_mock_pipeline.py`. 20 tests, **0.40 s** measured
+locally (0.77 s including interpreter start). The allocation requires under
+60 s.
+
+```bash
+pytest tests/integration/                      # the integration test alone
+pytest tests/integration/ -q --durations=5     # with timings
+pytest                                         # CI discovers it automatically
+```
+
+**No CI change was needed.** `pyproject.toml` already sets
+`testpaths = ["tests"]`, so the plain `pytest --cov=neuromesh` in
+`.github/workflows/ci.yml` picks this file up with no edit to the workflow.
+
+### 17.1 What it actually proves, and what it does not
+
+It runs the planned MVP scenario — ER graph, N = 7 and N = 14, balanced roles,
+a consensus-shaped task, a mock LLM client, 10 synchronous rounds, a readout —
+with **no API key, no GPU, no network, no paid service and no data download**.
+A test blocks `socket.socket` outright during a run, so a future client that
+quietly reaches for an HTTP endpoint fails here rather than on someone's bill.
+
+It is **not** a demonstration that the team's real pipeline works, because two
+tracks have not shipped the modules that pipeline needs.
+
+**Real repository modules exercised:** `generate_graph`, `validate_graph`,
+`assign_roles`, `remove_nodes` (Track A); `MockLLMClient` (Track B);
+`LLMRequest`, `LLMResponse`, `AgentTurn`, `TaskInstance`, `CallRecord`,
+`RunResult` (shared contracts).
+
+**Production modules that do not exist yet**, each asserted to still raise so
+the test file announces the day they land:
+
+| Entry point | Track | Status |
+|---|---|---|
+| `agents.run_network` | B | `NotImplementedError` — the round engine |
+| `tasks.get_task` | C | `NotImplementedError` — the task registry |
+| `baseline.run_baseline`, `evaluation.compute_metrics` | C | not implemented, not needed here |
+| Track D experiment execution | D | not implemented, not needed here |
+
+**Test-only scaffolding, named as such.** `MockRoundEngine` is a test harness,
+not a product: the simplest synchronous protocol that can be reasoned about —
+every agent forwards everything it knows to every neighbour, once per round,
+applied simultaneously at end of round. It lives in the test file, is not
+importable as a production module, and is **not** a substitute for Track B's
+engine. `consensus_instance` likewise hand-builds a `TaskInstance` from the
+shared contract type because `get_task("consensus")` raises; it is a fixture,
+not Track C's task.
+
+### 17.2 What is asserted
+
+- **Role alignment** — every agent has a YEO7 role, exactly N/7 per role.
+- **Flow only along edges** — every delivery is checked against
+  `graph.has_edge`, and **every message the LLM client itself addresses** is
+  checked against that agent's neighbour set and the 80-word contract limit.
+  That check is vacuous on content today (the placeholder client sends no
+  messages) but live on plumbing: when the real deterministic mock lands, a
+  message routed to a non-neighbour fails **here**, in Track A's test
+  directory — which is what `CONTRIBUTING.md` §8 prescribes.
+- **No phantom nodes** — no message, log row or delivery names a node absent
+  from the graph.
+- **Propagation respects graph distance** — knowledge after round *r* is
+  compared against shortest-path distances computed independently with
+  NetworkX. The `<=` direction is protocol-independent; `==` holds for this
+  harness because its rule is an unconditional flood.
+- **Determinism** — identical runs give identical knowledge sets, identical
+  delivery lists and identical `CallRecord`s, and each round advances
+  knowledge by exactly one hop.
+- **Log schema** — a real `RunResult` with N × rounds real `CallRecord`s is
+  assembled and round-tripped as JSON, which is what Track D's Parquet writer
+  needs.
+- **Removal inside the pipeline** — a node is removed, its incident edges are
+  confirmed gone and no others touched, the run completes on the attacked
+  graph, and agents stranded in a component with no source correctly end up
+  knowing nothing.
+
+### 17.3 Timing honesty
+
+There are no sleeps and no wall-clock assertions anywhere in the file, so
+nothing in it can make CI flaky. One test measures the whole scenario against
+a deliberately loose 20-second ceiling — tight enough to catch a regression,
+loose enough that a slow shared runner cannot trip it.
+
+**Local runtime does not predict GitHub Actions runtime, and CI has not been
+run on this branch.** All timings here are Windows / Python 3.11.9 / local.
+
+---
+
+## 18. N = 112 diameters and the round budget (Week 3)
+
+`src/neuromesh/graphs/analysis.py`, exposed through the Track A CLI.
+
+```bash
+python -m neuromesh.graphs.cli diameters                     # the 25-row study table
+python -m neuromesh.graphs.cli diameters --check-fixtures    # + fixture cross-check
+python -m neuromesh.graphs.cli diameters --json out.json     # + machine-readable
+python -m neuromesh.graphs.cli diameters --n 14 --seeds 0 1  # any scale / seed set
+```
+
+Deterministic, offline, no downloads; uses the committed empirical Yeo matrix
+for `yeo_sbm`. Graphs come from the public `generate_graph` at default
+settings, so the rows describe exactly the graphs the experiment will run.
+
+**Exit code.** 1 means an *execution* problem — a generated graph that breached
+the connectivity contract, or a committed fixture whose diameter disagrees with
+the regenerated graph. A diameter over the round budget is a **finding, not an
+error**, and leaves the exit code 0: reporting it is the command's job.
+
+Equivalent Python:
+
+```python
+from neuromesh.graphs import (
+    aggregate_path_metrics,
+    diameter_table,
+    round_budget_assessment,
+)
+
+rows = diameter_table(112)                       # 5 topologies x 5 seeds = 25 rows
+aggregate_path_metrics(rows)                     # per-topology statistics
+round_budget_assessment(rows, (10, 12))          # which conditions fit which budget
+```
+
+### 18.1 Method
+
+`networkx.diameter` and `networkx.average_shortest_path_length` on the
+unweighted graph (BFS; all edges cost 1 hop). Seeds 0-4, the study's set.
+Standard deviation is the **sample** standard deviation (`ddof = 1`,
+Bessel-corrected), because the claim is about the topology rather than about
+these five graphs; the population value is also returned as `std_population`.
+
+For a disconnected graph the diameter is infinite and **no finite stand-in is
+invented**: `diameter` is `None` and `max_finite_distance` — the widest
+component's diameter — is reported separately under its own name. All 25
+generated graphs are connected, so this path exists for attacked graphs and
+for reporting a contract breach honestly.
+
+**Fixture cross-check:** the five committed seed-0 N = 112 fixtures were
+reloaded and gave identical diameters and edge counts to the regenerated
+graphs (5/5 OK). A test additionally pins the three Week 1 values recorded in
+§10 (ER 7, BA 5, WS 10), so a generator change that moves them cannot pass
+silently.
+
+### 18.2 Results — all 25 conditions
+
+Every graph: 112 nodes, 224 edges, mean degree exactly 4.0000, connected,
+1 component.
+
+| Topology | Seed | Diameter | Avg path | ≤10 rounds | ≤12 rounds |
+|---|---|---|---|---|---|
+| er | 0 | 7 | 3.5072 | yes | yes |
+| er | 1 | 7 | 3.4955 | yes | yes |
+| er | 2 | 7 | 3.5253 | yes | yes |
+| er | 3 | 8 | 3.5983 | yes | yes |
+| er | 4 | 8 | 3.5484 | yes | yes |
+| ws | 0 | 10 | 5.1860 | yes | yes |
+| ws | 1 | **11** | 5.3274 | **NO** | yes |
+| ws | 2 | 10 | 4.9427 | yes | yes |
+| ws | 3 | 9 | 4.7954 | yes | yes |
+| ws | 4 | **13** | 5.8332 | **NO** | **NO** |
+| ba | 0 | 5 | 2.9791 | yes | yes |
+| ba | 1 | 6 | 3.1075 | yes | yes |
+| ba | 2 | 6 | 3.0224 | yes | yes |
+| ba | 3 | 5 | 3.0845 | yes | yes |
+| ba | 4 | 6 | 2.9899 | yes | yes |
+| modular | 0 | 7 | 3.6427 | yes | yes |
+| modular | 1 | 7 | 3.6176 | yes | yes |
+| modular | 2 | 7 | 3.5891 | yes | yes |
+| modular | 3 | 8 | 3.5349 | yes | yes |
+| modular | 4 | 8 | 3.6210 | yes | yes |
+| yeo_sbm | 0 | 7 | 3.4596 | yes | yes |
+| yeo_sbm | 1 | 7 | 3.5267 | yes | yes |
+| yeo_sbm | 2 | 8 | 3.6435 | yes | yes |
+| yeo_sbm | 3 | 7 | 3.5510 | yes | yes |
+| yeo_sbm | 4 | 7 | 3.5384 | yes | yes |
+
+Aggregate (std dev = sample, `ddof = 1`):
+
+| Topology | Min | Max | Mean | Median | Std dev | ≤10 | ≤12 | >10 | >12 |
+|---|---|---|---|---|---|---|---|---|---|
+| er | 7 | 8 | 7.40 | 7.0 | 0.5477 | 5 | 5 | 0 | 0 |
+| ws | 9 | **13** | 10.60 | 10.0 | 1.5166 | 3 | 4 | **2** | **1** |
+| ba | 5 | 6 | 5.60 | 6.0 | 0.5477 | 5 | 5 | 0 | 0 |
+| modular | 7 | 8 | 7.40 | 7.0 | 0.5477 | 5 | 5 | 0 | 0 |
+| yeo_sbm | 7 | 8 | 7.20 | 7.0 | 0.4472 | 5 | 5 | 0 | 0 |
+
+### 18.3 Ten versus twelve rounds
+
+| Budget | Conditions covered | Verdict |
+|---|---|---|
+| 10 rounds | **23 / 25** | insufficient — WS seeds 1 (d=11) and 4 (d=13) |
+| 12 rounds | **24 / 25** | insufficient — WS seed 4 (d=13) |
+| 13 rounds | 25 / 25 | smallest budget covering every measured condition |
+
+**Going from 10 to 12 rounds does not resolve all measured violations.** It
+fixes WS seed 1 and leaves WS seed 4 short by one hop. WS is also the only
+topology that ever exceeds either budget: ER, BA, modular and Yeo-SBM all peak
+at diameter 8, which clears 10 rounds with 2 hops of slack.
+
+WS is the outlier by construction — a rewired ring with p = 0.1 at mean degree
+4 keeps long-range structure that the other four do not have, and its
+seed-to-seed spread (9 to 13, std 1.52) is 2.8x the next largest
+(0.55 for ER, BA and modular).
+
+### 18.4 What "sufficient" means here — read before quoting these numbers
+
+`diameter <= rounds` is **necessary, not sufficient.** It is the weakest
+possible requirement: that a shortest path has time to be traversed once.
+A graph of diameter *d* needs at least *d* rounds before the most distant pair
+can have exchanged anything at all.
+
+It says **nothing** about whether intermediate agents forward information
+faithfully, whether a consensus task converges, or whether an LLM reasons
+correctly over what arrives. **No LLM convergence has been validated** — the
+round engine does not exist yet.
+
+Three further caveats, all real:
+
+1. **The off-by-one is Track B's to settle.** Whether *d* rounds suffice or
+   *d + 1* are needed depends on conventions nobody has implemented: whether
+   round 1 is the first send or an initialisation turn, whether a message sent
+   in round *r* is readable in round *r* or *r + 1*, and whether the final
+   readout consumes a round. The numbers above are pure graph distances. The
+   tables report `d <= budget`, so if the team later finds an extra round is
+   consumed, re-read them against `budget - 1` without remeasuring — at which
+   point **10 rounds would cover 23/25 and 12 rounds would also cover only
+   23/25**, since WS seed 1 (d = 11) would then fail a 12-round budget too.
+2. **Round-trip tasks need more than one traversal.** A task that must combine
+   information from the far end and return a verdict to a readout agent needs
+   something closer to *d* plus the input-to-readout distance. That is Week 4
+   work (positional covariates) and is not computed here.
+3. **Diameter is a worst case over pairs.** Average path length is 3.0-5.8
+   everywhere, so a diameter violation degrades the tail of the pair
+   distribution, not the whole run.
+
+### 18.5 Recommendation
+
+**12 rounds, with WS at N = 112 reported as diameter-limited** — and the team
+should decide explicitly rather than inherit the default.
+
+Reasoning. 12 rounds covers 24/25 conditions and costs 20% more LLM calls than
+10. Going to 13 buys the 25th condition (WS seed 4) and nothing else, for
+another 8% on top; 14 or more would be needed if caveat 1 above turns out to
+apply. Against that, every non-WS condition already clears 10 rounds with
+slack, so the extra rounds buy coverage for one topology at one scale.
+
+Two alternatives the team may prefer, both defensible:
+
+- **Keep 10 rounds** and report WS N = 112 propagation as diameter-limited for
+  2 of 5 seeds. Cheapest, and honest if the limitation is stated.
+- **Go to 13 rounds** and have graph-theoretic reachability for every measured
+  condition with no caveat.
+
+What Track A will not do unilaterally: `DEFAULT_ROUNDS` lives in
+`contracts.py`, which is frozen at v1.0 and owned by all four members, so
+changing it needs a `contracts/` PR. **No parameter has been changed.** This
+section is the measurement and the recommendation; the decision is the team's.
+
+---
+
+## 19. Week 3 limitations and follow-ups
+
+1. **`remove_nodes` does not protect readout agents**, contrary to its Week 1
+   placeholder docstring. Deliberate; measured and reported instead. Raised
+   for the team as a design question — §16.6.
+2. **The round-budget result is graph-theoretic only.** No LLM convergence,
+   consensus or task success has been validated, and the protocol off-by-one
+   is unresolved pending Track B — §18.4.
+3. **Fraction rounding is `floor`,** so the study's 10/20/30% levels actually
+   remove 9.82/19.64/29.46% at N = 112. Report the realised fraction — §16.5.
+4. **The integration test is a test-only harness,** not proof that the team's
+   real pipeline works. `run_network` and `get_task` remain unimplemented —
+   §17.1.
+5. **CI has not been run on this branch.** Every number in §17 and §18 is
+   local (Windows, Python 3.11.9, NetworkX 3.6.1, NumPy 2.4.6).
+6. **Still open from Week 2, unchanged:** the N = 7 / N = 14 block-model
+   limits (§15.1-2), fixed-edge-budget block sampling (§12), the
+   role-placement confound across topology families (§14.1), the Yeo block
+   means mixing strength and density (§13.1), the unpublished ENIGMA subject
+   count (§15.4), and `load_graph()` resolving fixtures relative to the
+   working directory (§15.6).
+7. **Not done, deferred to Week 4:** `structural_metrics` remains a
+   placeholder. Positional covariates, robustness curves and AUC analysis are
+   Weeks 4-6 and were deliberately not started.
