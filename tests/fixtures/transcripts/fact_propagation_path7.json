@@ -1,0 +1,479 @@
+{
+ "description": "Path graph 0-...-6, Visual at node 0, Frontoparietal readout at node 6 (hop 6). Readout knows 3/5 facts at round 2 and 5 facts with F4 distorted at round 3. Expected scores derived by hand.",
+ "graph": {
+  "edges": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    3
+   ],
+   [
+    3,
+    4
+   ],
+   [
+    4,
+    5
+   ],
+   [
+    5,
+    6
+   ]
+  ],
+  "roles": {
+   "0": "visual",
+   "1": "somatomotor",
+   "2": "dorsal_attention",
+   "3": "ventral_attention",
+   "4": "limbic",
+   "5": "default",
+   "6": "frontoparietal"
+  }
+ },
+ "run": {
+  "run_id": "fixture-fp",
+  "topology": "er",
+  "n": 7,
+  "task": "fact_propagation",
+  "seed": 0,
+  "removal": null,
+  "wall_clock_s": 12.0
+ },
+ "instance": {
+  "task": "fact_propagation",
+  "seed": 0,
+  "private_info": {
+   "0": "facts...",
+   "1": "",
+   "2": "",
+   "3": "",
+   "4": "",
+   "5": "",
+   "6": ""
+  },
+  "initial_state": {
+   "0": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4444",
+     "F5": "5555"
+    }
+   },
+   "1": {
+    "facts": {}
+   },
+   "2": {
+    "facts": {}
+   },
+   "3": {
+    "facts": {}
+   },
+   "4": {
+    "facts": {}
+   },
+   "5": {
+    "facts": {}
+   },
+   "6": {
+    "facts": {}
+   }
+  },
+  "readout_nodes": [
+   6
+  ],
+  "ground_truth": {
+   "facts": {
+    "F1": {
+     "text": "The access code of Project X-0 is 1111.",
+     "value": "1111"
+    },
+    "F2": {
+     "text": "The access code of Project X-1 is 2222.",
+     "value": "2222"
+    },
+    "F3": {
+     "text": "The access code of Project X-2 is 3333.",
+     "value": "3333"
+    },
+    "F4": {
+     "text": "The access code of Project X-3 is 4444.",
+     "value": "4444"
+    },
+    "F5": {
+     "text": "The access code of Project X-4 is 5555.",
+     "value": "5555"
+    }
+   },
+   "input_nodes": [
+    0
+   ],
+   "hop_distance": {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6
+   }
+  }
+ },
+ "calls": [
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 0,
+   "role": "visual",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4444",
+     "F5": "5555"
+    }
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 1,
+   "role": "somatomotor",
+   "prompt_tokens": 110,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 2,
+   "role": "dorsal_attention",
+   "prompt_tokens": 120,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 3,
+   "role": "ventral_attention",
+   "prompt_tokens": 130,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 4,
+   "role": "limbic",
+   "prompt_tokens": 140,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 5,
+   "role": "default",
+   "prompt_tokens": 150,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 1,
+   "node_id": 6,
+   "role": "frontoparietal",
+   "prompt_tokens": 160,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 0,
+   "role": "visual",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4444",
+     "F5": "5555"
+    }
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 1,
+   "role": "somatomotor",
+   "prompt_tokens": 110,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4444",
+     "F5": "5555"
+    }
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 2,
+   "role": "dorsal_attention",
+   "prompt_tokens": 120,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 3,
+   "role": "ventral_attention",
+   "prompt_tokens": 130,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 4,
+   "role": "limbic",
+   "prompt_tokens": 140,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 5,
+   "role": "default",
+   "prompt_tokens": 150,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 2,
+   "node_id": 6,
+   "role": "frontoparietal",
+   "prompt_tokens": 160,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333"
+    }
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 0,
+   "role": "visual",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4444",
+     "F5": "5555"
+    }
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 1,
+   "role": "somatomotor",
+   "prompt_tokens": 110,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4444",
+     "F5": "5555"
+    }
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 2,
+   "role": "dorsal_attention",
+   "prompt_tokens": 120,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 3,
+   "role": "ventral_attention",
+   "prompt_tokens": 130,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 4,
+   "role": "limbic",
+   "prompt_tokens": 140,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 5,
+   "role": "default",
+   "prompt_tokens": 150,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {}
+   }
+  },
+  {
+   "run_id": "fixture-fp",
+   "round": 3,
+   "node_id": 6,
+   "role": "frontoparietal",
+   "prompt_tokens": 160,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "facts": {
+     "F1": "1111",
+     "F2": "2222",
+     "F3": "3333",
+     "F4": "4440",
+     "F5": "5555"
+    }
+   }
+  }
+ ],
+ "expected": {
+  "readout_fidelity": 0.8,
+  "network_fidelity": 0.4,
+  "readout_complete": 0.0,
+  "distortion_rate": 0.06666666666666667,
+  "propagation_delay_t50": 2.0,
+  "t50_reached": 1.0,
+  "n_rounds": 3.0,
+  "fidelity_hop_0": 1.0,
+  "fidelity_hop_1": 1.0,
+  "fidelity_hop_2": 0.0,
+  "fidelity_hop_6": 0.8
+ }
+}

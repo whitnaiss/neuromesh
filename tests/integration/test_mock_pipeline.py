@@ -136,10 +136,15 @@ def test_production_round_engine_is_still_absent():
         run_network(graph, instance, MockLLMClient(), rounds=2)
 
 
-def test_production_task_registry_is_still_absent():
-    """Track C's ``get_task`` is not implemented; the instance is hand-built."""
-    with pytest.raises(NotImplementedError, match="get_task"):
-        get_task("consensus")
+def test_production_task_registry_builds_a_consensus_instance():
+    """Track C's ``get_task`` has landed (Week 5): it builds a valid instance on
+    the MVP graph. The hand-built ``consensus_instance`` below stays as the
+    harness fixture until the round engine lands."""
+    graph = assign_roles(generate_graph(MVP_TOPOLOGY, 7, seed=MVP_SEED), seed=MVP_SEED)
+    instance = get_task("consensus").make_instance(graph, MVP_SEED)
+    assert instance.task == "consensus"
+    assert set(instance.initial_state) == set(graph.nodes)
+    assert set(instance.readout_nodes) <= set(graph.nodes)
 
 
 def test_the_mock_llm_client_is_a_real_repository_module():
