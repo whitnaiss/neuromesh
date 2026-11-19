@@ -27,6 +27,8 @@ dependencies = [
   # rather than via networkx[default], which would also pull in matplotlib and
   # pandas that this project does not need from networkx.
   "scipy>=1.11.2",
+  # Track C evaluation figures (neuromesh.evaluation.plots); headless Agg backend.
+  "matplotlib>=3.8",
 ]
 
 [project.optional-dependencies]
