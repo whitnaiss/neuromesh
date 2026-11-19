@@ -12,8 +12,8 @@ import pandas as pd  # noqa: E402
 
 TOPOLOGY_ORDER = ["er", "ws", "ba", "modular", "yeo_sbm"]
 TOPOLOGY_LABEL = {"er": "ER", "ws": "WS", "ba": "BA", "modular": "Modular", "yeo_sbm": "Yeo-SBM"}
-TOPOLOGY_COLOR = {"er": "#4C72B0", "ws": "#55A868", "ba": "#C44E52", "modular": "#8172B2",
-                  "yeo_sbm": "#CCB974"}
+TOPOLOGY_COLOR = {"er": "#1f4e9c", "ws": "#b8860b", "ba": "#1b7a3d", "modular": "#a33b8f",
+                  "yeo_sbm": "#c0392b"}  # same palette as Track A's figures
 #: Metrics that are proportions; their CIs are clipped to [0, 1] when drawn.
 BOUNDED_METRICS = {"readout_fidelity", "network_fidelity", "readout_complete", "distortion_rate",
                    "agreement_ratio", "consensus_reached", "valid_vote_rate", "exact_accuracy",
@@ -22,10 +22,11 @@ TASK_LABEL = {"fact_propagation": "Fact Propagation", "consensus": "Consensus",
               "aggregation": "Distributed Aggregation"}
 
 
-def _finish(fig, path: str | Path) -> Path:
+def _finish(fig, path: str | Path, layout: bool = True) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
+    if layout:
+        fig.tight_layout()
     fig.savefig(path, dpi=200)
     plt.close(fig)
     return path
@@ -66,8 +67,11 @@ def plot_metric_vs_n(
         ax.set_ylabel(ylabel)
         ax.set_title(TASK_LABEL.get(task, task), fontsize=10)
         ax.grid(alpha=0.3)
-    if axes[0][0].get_legend_handles_labels()[0]:
-        axes[0][0].legend(fontsize=7, frameon=False, loc="best")
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    if handles:  # one shared legend to the right of the panels, never over the data
+        fig.legend(handles, labels, fontsize=7, frameon=False, loc="center right")
+        fig.tight_layout(rect=(0, 0, 0.92, 1))
+        return _finish(fig, path, layout=False)
     return _finish(fig, path)
 
 

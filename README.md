@@ -10,7 +10,9 @@ Barabási–Albert, modular, Yeo-based SBM) affect information propagation, cons
 cross-network integration, robustness and cost in networks of open-source LLM agents whose
 roles follow the Yeo 7-network brain parcellation.
 
-> Status: project skeleton. Entry points raise `NotImplementedError` until each track implements them.
+> **Status (Nov 19):** graphs, roles and node removal (Track A) and tasks, single-agent baseline and
+> evaluation (Track C) are implemented and tested. The LLM client and round engine (Track B) and the
+> experiment runner (Track D) are in progress; until they land, `neuromesh run` supports `--dry-run` only.
 
 ## Setup
 
@@ -21,6 +23,41 @@ pytest            # smoke tests
 ruff check .      # lint
 neuromesh run configs/pilot.yaml --dry-run
 ```
+
+## Usage
+
+**Tasks and evaluation without an LLM.** Build a graph, make a task instance, run the rule-based
+reference agents and score the run from its logs:
+
+```python
+from neuromesh.graphs import generate_graph, assign_roles
+from neuromesh.tasks import get_task
+from neuromesh.evaluation import compute_metrics, to_frames
+from neuromesh.evaluation.reference import run_reference
+
+graph = assign_roles(generate_graph("ws", 28, seed=0), seed=0)
+task = get_task("aggregation")              # or "fact_propagation", "consensus"
+instance = task.make_instance(graph, seed=0)
+result = run_reference(graph, instance)     # rule-based agents, no LLM
+runs, calls = to_frames([(result, instance)])
+print(compute_metrics(runs, calls)[["topology", "n", "exact_accuracy", "total_tokens"]])
+```
+
+**Single-agent baseline** against any OpenAI-compatible endpoint, or Ollama with thinking disabled:
+
+```bash
+python -m neuromesh.baseline --base-url http://localhost:11434 --ollama --model qwen3:8b \
+    --seeds 0 1 2 3 4 --n 14 --out results/baseline_n14
+```
+
+**Evaluation pilot** (750 reference-agent runs on all 25 graph conditions; metrics, 95% CIs,
+covariate regression and figures in about 15 s):
+
+```bash
+python -m neuromesh.evaluation.pilot --out results/pilot_reference
+```
+
+Task definitions, agent state fields, metrics and the log format are in [docs/track_c.md](docs/track_c.md).
 
 ## Repository layout and owners
 
