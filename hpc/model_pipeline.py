@@ -31,7 +31,7 @@ class LocalLLM:
 
         # Import the large libraries only when actually loading a model.
         import torch
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoModelForCausalLM, AutoTokenizer
         if not torch.cuda.is_available():
             raise RuntimeError("No CUDA GPU. Start this from a Slurm GPU job: sbatch run.sbatch")
 
