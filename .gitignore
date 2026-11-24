@@ -20,3 +20,11 @@ results/
 *.jsonl
 !tests/fixtures/**/*.jsonl
 hf_cache/
+
+models/
+.runtime/
+*.out
+__pycache__/
+*.pyc
+.env
+*.key
