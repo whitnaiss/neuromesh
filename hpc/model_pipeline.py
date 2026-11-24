@@ -8,6 +8,7 @@ Usage (inside a Slurm GPU allocation):
 The calling program owns each agent's conversation history. Nothing is served over HTTP.
 """
 from pathlib import Path
+from time import perf_counter
 
 # Names are intentionally short so teammates can change models easily.
 MODELS = {
@@ -54,10 +55,18 @@ class LocalLLM:
         print(f"Ready on {torch.cuda.get_device_name(0)}", flush=True)
 
     def generate(self, messages, max_new_tokens=None):
-        """Generate from a list of {role, content} messages; return generated text."""
+        """Backwards-compatible text-only call for teammates' existing code."""
+        return self.generate_with_stats(messages, max_new_tokens)["text"]
+
+    def generate_with_stats(self, messages, max_new_tokens=None):
+        """Run one inference; include actual prompt/completion token counts and latency.
+
+        Count generated tokens from IDs (including EOS), rather than retokenizing
+        the decoded text. This includes DeepSeek reasoning tokens if generated.
+        """
         if not messages:
             raise ValueError("messages cannot be empty")
-        messages = self._prepare_messages(messages)
+        prepared = self._prepare_messages(messages)
         settings = {
             "tokenize": True,
             "add_generation_prompt": True,
@@ -67,21 +76,30 @@ class LocalLLM:
         if self.name in ("qwen4", "qwen8"):
             settings["enable_thinking"] = False
 
-        inputs = self.tokenizer.apply_chat_template(messages, **settings).to("cuda")
-        # DeepSeek is a reasoning model, so allow more tokens by default.
+        inputs = self.tokenizer.apply_chat_template(prepared, **settings).to("cuda")
+        prompt_tokens = int(inputs["input_ids"].shape[-1])
         limit = max_new_tokens if max_new_tokens is not None else (
             400 if self.name == "deepseek8" else 150
         )
-        generation = {"max_new_tokens": limit, "do_sample": False}
+        # DeepSeek-R1 uses sampled reasoning; Qwen remains deterministic.
+        generation = {"max_new_tokens": limit, "do_sample": self.name == "deepseek8"}
         if self.name == "deepseek8":
-            generation.update(do_sample=True, temperature=0.6, top_p=0.95)
+            generation.update(temperature=0.6, top_p=0.95)
         if self.tokenizer.pad_token_id is not None:
             generation["pad_token_id"] = self.tokenizer.pad_token_id
 
+        started = perf_counter()
         with self.torch.inference_mode():
             output = self.model.generate(**inputs, **generation)
-        new_ids = output[0][inputs["input_ids"].shape[-1]:]
-        return self.tokenizer.decode(new_ids, skip_special_tokens=True).strip()
+        self.torch.cuda.synchronize()  # Record completed GPU work, not just launch time.
+        latency_seconds = perf_counter() - started
+        new_ids = output[0][prompt_tokens:]
+        return {
+            "text": self.tokenizer.decode(new_ids, skip_special_tokens=True).strip(),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": int(new_ids.shape[-1]),
+            "latency_seconds": round(latency_seconds, 3),
+        }
 
     def _prepare_messages(self, messages):
         # DeepSeek-R1 authors recommend instructions in the user prompt,
