@@ -1,0 +1,457 @@
+{
+ "description": "14 agents, two per network. Readout A reports everything correctly; readout B reports values as strings with limbic wrong (56) and a wrong sum.",
+ "graph": {
+  "edges": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    3
+   ],
+   [
+    3,
+    4
+   ],
+   [
+    4,
+    5
+   ],
+   [
+    5,
+    6
+   ],
+   [
+    6,
+    7
+   ],
+   [
+    7,
+    8
+   ],
+   [
+    8,
+    9
+   ],
+   [
+    9,
+    10
+   ],
+   [
+    10,
+    11
+   ],
+   [
+    11,
+    12
+   ],
+   [
+    12,
+    13
+   ],
+   [
+    13,
+    0
+   ]
+  ],
+  "roles": {
+   "0": "visual",
+   "1": "visual",
+   "2": "somatomotor",
+   "3": "somatomotor",
+   "4": "dorsal_attention",
+   "5": "dorsal_attention",
+   "6": "ventral_attention",
+   "7": "ventral_attention",
+   "8": "limbic",
+   "9": "limbic",
+   "10": "frontoparietal",
+   "11": "frontoparietal",
+   "12": "default",
+   "13": "default"
+  }
+ },
+ "run": {
+  "run_id": "fixture-aggregation",
+  "topology": "er",
+  "n": 14,
+  "task": "aggregation",
+  "seed": 0,
+  "removal": null,
+  "wall_clock_s": 5.0
+ },
+ "instance": {
+  "task": "aggregation",
+  "seed": 0,
+  "private_info": {
+   "0": "Your network (visual) holds the secret value.",
+   "1": "Your network (visual) holds the secret value.",
+   "2": "Your network (somatomotor) holds the secret value.",
+   "3": "Your network (somatomotor) holds the secret value.",
+   "4": "Your network (dorsal_attention) holds the secret value.",
+   "5": "Your network (dorsal_attention) holds the secret value.",
+   "6": "Your network (ventral_attention) holds the secret value.",
+   "7": "Your network (ventral_attention) holds the secret value.",
+   "8": "Your network (limbic) holds the secret value.",
+   "9": "Your network (limbic) holds the secret value.",
+   "10": "Your network (frontoparietal) holds the secret value.",
+   "11": "Your network (frontoparietal) holds the secret value.",
+   "12": "Your network (default) holds the secret value.",
+   "13": "Your network (default) holds the secret value."
+  },
+  "initial_state": {
+   "0": {
+    "values": {
+     "visual": 11
+    }
+   },
+   "1": {
+    "values": {
+     "visual": 11
+    }
+   },
+   "2": {
+    "values": {
+     "somatomotor": 22
+    }
+   },
+   "3": {
+    "values": {
+     "somatomotor": 22
+    }
+   },
+   "4": {
+    "values": {
+     "dorsal_attention": 33
+    }
+   },
+   "5": {
+    "values": {
+     "dorsal_attention": 33
+    }
+   },
+   "6": {
+    "values": {
+     "ventral_attention": 44
+    }
+   },
+   "7": {
+    "values": {
+     "ventral_attention": 44
+    }
+   },
+   "8": {
+    "values": {
+     "limbic": 55
+    }
+   },
+   "9": {
+    "values": {
+     "limbic": 55
+    }
+   },
+   "10": {
+    "values": {
+     "frontoparietal": 66
+    }
+   },
+   "11": {
+    "values": {
+     "frontoparietal": 66
+    }
+   },
+   "12": {
+    "values": {
+     "default": 77
+    }
+   },
+   "13": {
+    "values": {
+     "default": 77
+    }
+   }
+  },
+  "readout_nodes": [
+   10,
+   11
+  ],
+  "ground_truth": {
+   "values": {
+    "visual": 11,
+    "somatomotor": 22,
+    "dorsal_attention": 33,
+    "ventral_attention": 44,
+    "limbic": 55,
+    "frontoparietal": 66,
+    "default": 77
+   },
+   "sum": 308,
+   "networks_present": [
+    "visual",
+    "somatomotor",
+    "dorsal_attention",
+    "ventral_attention",
+    "limbic",
+    "frontoparietal",
+    "default"
+   ],
+   "value_range": [
+    10,
+    99
+   ]
+  }
+ },
+ "calls": [
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 0,
+   "role": "visual",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "visual": 11
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 1,
+   "role": "visual",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "visual": 11
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 2,
+   "role": "somatomotor",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "somatomotor": 22
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 3,
+   "role": "somatomotor",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "somatomotor": 22
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 4,
+   "role": "dorsal_attention",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "dorsal_attention": 33
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 5,
+   "role": "dorsal_attention",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "dorsal_attention": 33
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 6,
+   "role": "ventral_attention",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "ventral_attention": 44
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 7,
+   "role": "ventral_attention",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "ventral_attention": 44
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 8,
+   "role": "limbic",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "limbic": 55
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 9,
+   "role": "limbic",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "limbic": 55
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 10,
+   "role": "frontoparietal",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "visual": 11,
+     "somatomotor": 22,
+     "dorsal_attention": 33,
+     "ventral_attention": 44,
+     "limbic": 55,
+     "frontoparietal": 66,
+     "default": 77
+    },
+    "sum": 308
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 11,
+   "role": "frontoparietal",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "visual": "11",
+     "somatomotor": "22",
+     "dorsal_attention": "33",
+     "ventral_attention": "44",
+     "limbic": "56",
+     "frontoparietal": "66",
+     "default": "77"
+    },
+    "sum": "309"
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 12,
+   "role": "default",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "default": 77
+    }
+   }
+  },
+  {
+   "run_id": "fixture-aggregation",
+   "round": 1,
+   "node_id": 13,
+   "role": "default",
+   "prompt_tokens": 100,
+   "completion_tokens": 20,
+   "latency_s": 0.5,
+   "parse_ok": true,
+   "retries": 0,
+   "state": {
+    "values": {
+     "default": 77
+    }
+   }
+  }
+ ],
+ "expected": {
+  "exact_accuracy": 0.5,
+  "partial_accuracy": 0.9285714285714286,
+  "sum_accuracy": 0.5,
+  "max_recoverable": 1.0,
+  "n_readout": 2.0,
+  "values_complete": 0.5
+ }
+}
